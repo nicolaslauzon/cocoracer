@@ -16,3 +16,9 @@ def config() -> Config:
 @pytest.fixture(scope="session")
 def stadium(config: Config) -> Track:
     return build_track(config.tracks["stadium"])
+
+
+@pytest.fixture(scope="session")
+def f1_tracks(config: Config) -> dict[str, Track]:
+    names = ("montreal", "spa", "silverstone")
+    return {name: build_track(config.tracks[name]) for name in names}

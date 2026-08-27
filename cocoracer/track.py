@@ -172,7 +172,10 @@ def _turn_points(
 
 
 def _validate_closure(raw: np.ndarray, spec: TrackSpec) -> None:
-    turn_sum = sum(seg.angle for seg in spec.segments if seg.type == "turn")
+    segments = spec.segments
+    if segments is None:
+        raise TrackError(f"track {spec.name!r} has no layout")
+    turn_sum = sum(seg.angle for seg in segments if seg.type == "turn")
     if abs(abs(turn_sum) - 360.0) > 0.01:
         raise TrackError(
             f"track {spec.name!r} turn angles sum to {turn_sum:.3f} deg, expected +/-360"
@@ -249,9 +252,34 @@ def _footprint_points(
     return [(x + lx * cos - ly * sin, y + lx * sin + ly * cos) for lx, ly in local]
 
 
+def _centerline_to_raw(points: list[tuple[float, float]], name: str) -> np.ndarray:
+    pts = np.asarray(points, dtype=np.float64)
+    if pts.ndim != 2 or pts.shape[1] != 2 or len(pts) < 4:
+        raise TrackError(
+            f"track {name!r} centerline must have at least 4 [x, y] points"
+        )
+    gap = math.hypot(pts[0, 0] - pts[-1, 0], pts[0, 1] - pts[-1, 1])
+    if gap > 0.1:
+        raise TrackError(
+            f"track {name!r} centerline does not close: endpoint gap {gap:.4f} m"
+        )
+    body = pts[:-1] if gap < 1e-9 else pts
+    nxt = np.roll(body, -1, axis=0)
+    prv = np.roll(body, 1, axis=0)
+    heading = np.arctan2(nxt[:, 1] - prv[:, 1], nxt[:, 0] - prv[:, 0])
+    yaw = np.unwrap(heading)
+    raw = np.column_stack([body, yaw])
+    return np.vstack([raw, [raw[0, 0], raw[0, 1], yaw[0]]])
+
+
 def build_track(spec: TrackSpec) -> Track:
-    raw = _generate_centerline(spec.segments)
-    _validate_closure(raw, spec)
+    if spec.centerline is not None:
+        raw = _centerline_to_raw(spec.centerline, spec.name)
+    else:
+        if spec.segments is None:
+            raise TrackError(f"track {spec.name!r} has no layout")
+        raw = _generate_centerline(spec.segments)
+        _validate_closure(raw, spec)
     centerline, track_length, spline_x, spline_y, tree, frenet_s = _resample_and_fit(
         raw, spec.resolution
     )

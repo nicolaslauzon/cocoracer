@@ -1,4 +1,5 @@
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +80,8 @@ class TrackSpec:
     name: str
     width: float
     resolution: float
-    segments: list[Segment] = field(default_factory=list)
+    segments: list[Segment] | None = None
+    centerline: list[tuple[float, float]] | None = None
 
 
 @dataclass
@@ -93,9 +95,29 @@ class Config:
     default_track: str
 
 
-def _build_track(name: str, data: dict) -> TrackSpec:
-    section = f"tracks.{name}"
-    raw_segments = _require(data, "segments", section)
+def _load_track_file(ref: Any, base_dir: Path, section: str) -> dict:
+    if not isinstance(ref, str):
+        raise ConfigError(f"'file' in {section} must be a string path")
+    path = base_dir / ref
+    if not path.is_file():
+        raise ConfigError(f"track file '{ref}' for {section} not found")
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise ConfigError(
+            f"track file '{ref}' for {section} is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise ConfigError(
+            f"track file '{ref}' for {section} must contain a JSON object"
+        )
+    return data
+
+
+def _segments_from(data: dict, section: str) -> list[Segment] | None:
+    if "segments" not in data:
+        return None
+    raw_segments = data["segments"]
     segments: list[Segment] = []
     for i, raw in enumerate(raw_segments):
         seg_section = f"{section}.segments[{i}]"
@@ -114,11 +136,44 @@ def _build_track(name: str, data: dict) -> TrackSpec:
             )
         else:
             raise ConfigError(f"unknown segment type '{seg_type}' in {seg_section}")
+    return segments
+
+
+def _centerline_from(data: dict, section: str) -> list[tuple[float, float]] | None:
+    if "centerline" not in data:
+        return None
+    raw = data["centerline"]
+    if not isinstance(raw, list) or len(raw) < 4:
+        raise ConfigError(
+            f"track '{section}' centerline must list at least 4 [x, y] points"
+        )
+    points: list[tuple[float, float]] = []
+    for i, point in enumerate(raw):
+        if not isinstance(point, (list, tuple)) or len(point) != 2:
+            raise ConfigError(f"track '{section}' centerline[{i}] must be [x, y]")
+        points.append((float(point[0]), float(point[1])))
+    return points
+
+
+def _build_track(name: str, data: dict, base_dir: Path) -> TrackSpec:
+    section = f"tracks.{name}"
+    track_data = (
+        _load_track_file(data["file"], base_dir, section) if "file" in data else data
+    )
+    segments = _segments_from(track_data, section)
+    centerline = _centerline_from(track_data, section)
+    if segments is None and centerline is None:
+        raise ConfigError(f"track '{section}' needs 'segments' or 'centerline'")
+    if segments is not None and centerline is not None:
+        raise ConfigError(
+            f"track '{section}' declares both 'segments' and 'centerline'"
+        )
     return TrackSpec(
         name=name,
-        width=float(_require(data, "width", section)),
-        resolution=float(_require(data, "resolution", section)),
+        width=float(_require(track_data, "width", section)),
+        resolution=float(_require(track_data, "resolution", section)),
         segments=segments,
+        centerline=centerline,
     )
 
 
@@ -150,7 +205,10 @@ def load_config(path: Path | str) -> Config:
     )
 
     tracks_raw = _require(raw, "tracks", "root")
-    tracks = {name: _build_track(name, data) for name, data in tracks_raw.items()}
+    base_dir = Path(path).resolve().parent
+    tracks = {
+        name: _build_track(name, data, base_dir) for name, data in tracks_raw.items()
+    }
     default_track = raw.get("default_track", next(iter(tracks)))
     if default_track not in tracks:
         raise ConfigError(f"default_track '{default_track}' not defined in tracks")
