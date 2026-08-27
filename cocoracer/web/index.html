@@ -4,129 +4,250 @@
 <meta charset="utf-8">
 <title>cocoracer</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #141414; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #10141a; overflow: hidden; }
   canvas { display: block; }
-  #hud { position: fixed; top: 10px; left: 10px; color: #e8e8e8;
-         font: 13px/1.5 monospace; white-space: pre; }
+  #hud {
+    position: fixed; top: 10px; left: 10px; margin: 0;
+    color: #e8ecf1;
+    font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: pre;
+    background: rgba(13, 17, 23, 0.6);
+    padding: 8px 10px; border-radius: 6px;
+    pointer-events: none;
+  }
+  #countdown {
+    position: fixed; top: 38%; left: 50%;
+    transform: translate(-50%, -50%);
+    font: 700 140px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #ffd43b;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+<canvas id="view"></canvas>
 <pre id="hud">connecting…</pre>
+<div id="countdown" hidden></div>
 <script>
-const canvas = document.getElementById("c");
+"use strict";
+
+const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
-const COLORS = { racing: "#4da3ff", paused: "#ff5555", ghost: "#9a9a9a",
-                 finished: "#57d364", dnf: "#ffa94d" };
-let track = null;
-let frame = null;
+const countdownEl = document.getElementById("countdown");
 
-function fit() {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-  draw();
-}
-addEventListener("resize", fit);
+const COLORS = {
+  racing: "#4da3ff",
+  paused: "#ff5555",
+  ghost: "#9aa4b2",
+  finished: "#57d364",
+  dnf: "#ffa94d"
+};
+const ALPHAS = { ghost: 0.4 };
 
-function viewOf() {
-  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
-  for (const [x, y] of track.centerline) {
-    minx = Math.min(minx, x); maxx = Math.max(maxx, x);
-    miny = Math.min(miny, y); maxy = Math.max(maxy, y);
+let staticMsg = null;
+let dynamicMsg = null;
+let trackLayer = null;
+let view = null;
+
+function computeView() {
+  if (!staticMsg) return null;
+  let minx = Infinity;
+  let miny = Infinity;
+  let maxx = -Infinity;
+  let maxy = -Infinity;
+  for (const p of staticMsg.centerline) {
+    minx = Math.min(minx, p[0]);
+    maxx = Math.max(maxx, p[0]);
+    miny = Math.min(miny, p[1]);
+    maxy = Math.max(maxy, p[1]);
   }
-  const pad = track.track_width * 2;
-  minx -= pad; miny -= pad; maxx += pad; maxy += pad;
-  const scale = Math.min(canvas.width / (maxx - minx), canvas.height / (maxy - miny));
+  const g = staticMsg.grid;
+  minx = Math.min(minx, g.origin[0]);
+  miny = Math.min(miny, g.origin[1]);
+  maxx = Math.max(maxx, g.origin[0] + g.width * g.resolution);
+  maxy = Math.max(maxy, g.origin[1] + g.height * g.resolution);
+  const pad = staticMsg.track_width * 1.5;
+  minx -= pad;
+  miny -= pad;
+  maxx += pad;
+  maxy += pad;
+  const scale = Math.min(
+    canvas.width / (maxx - minx),
+    canvas.height / (maxy - miny)
+  );
   const ox = (canvas.width - (maxx - minx) * scale) / 2;
   const oy = (canvas.height - (maxy - miny) * scale) / 2;
-  const px = (x, y) => [ox + (x - minx) * scale, oy + (maxy - y) * scale];
-  return { px, scale };
+  return {
+    scale,
+    toPx(x, y) {
+      return [ox + (x - minx) * scale, oy + (maxy - y) * scale];
+    }
+  };
+}
+
+function pathCenterline(t) {
+  t.beginPath();
+  staticMsg.centerline.forEach((p, i) => {
+    const [sx, sy] = view.toPx(p[0], p[1]);
+    if (i === 0) t.moveTo(sx, sy);
+    else t.lineTo(sx, sy);
+  });
+  t.closePath();
+}
+
+function drawGrid(t) {
+  const g = staticMsg.grid;
+  const cell = g.resolution * view.scale;
+  t.fillStyle = "#46586e";
+  for (const [ix, iy] of g.occupied) {
+    const [sx, sy] = view.toPx(
+      g.origin[0] + (ix + 0.5) * g.resolution,
+      g.origin[1] + (iy + 0.5) * g.resolution
+    );
+    t.fillRect(sx - cell / 2, sy - cell / 2, cell + 0.5, cell + 0.5);
+  }
+}
+
+function drawRoad(t) {
+  t.lineJoin = "round";
+  t.lineCap = "round";
+  t.strokeStyle = "#252c36";
+  t.lineWidth = staticMsg.track_width * view.scale;
+  pathCenterline(t);
+  t.stroke();
+  t.strokeStyle = "rgba(232, 236, 241, 0.35)";
+  t.lineWidth = Math.max(1, 0.06 * view.scale);
+  t.setLineDash([0.4 * view.scale, 0.4 * view.scale]);
+  pathCenterline(t);
+  t.stroke();
+  t.setLineDash([]);
+}
+
+function drawStartLine(t) {
+  const sl = staticMsg.start_line;
+  const half = staticMsg.track_width / 2;
+  const dx = Math.cos(sl.yaw + Math.PI / 2) * half;
+  const dy = Math.sin(sl.yaw + Math.PI / 2) * half;
+  const [ax, ay] = view.toPx(sl.x + dx, sl.y + dy);
+  const [bx, by] = view.toPx(sl.x - dx, sl.y - dy);
+  t.strokeStyle = "#ffffff";
+  t.lineWidth = Math.max(2, 0.1 * view.scale);
+  t.beginPath();
+  t.moveTo(ax, ay);
+  t.lineTo(bx, by);
+  t.stroke();
+}
+
+function prerenderTrack() {
+  if (!staticMsg || !view) return;
+  trackLayer = document.createElement("canvas");
+  trackLayer.width = canvas.width;
+  trackLayer.height = canvas.height;
+  const t = trackLayer.getContext("2d");
+  drawGrid(t);
+  drawRoad(t);
+  drawStartLine(t);
+}
+
+function drawCar(v) {
+  const [cx, cy] = view.toPx(v.x, v.y);
+  const len = Math.max(8, 1.4 * view.scale);
+  const wid = Math.max(4, 0.7 * view.scale);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-v.yaw);
+  ctx.globalAlpha = ALPHAS[v.status] ?? 1;
+  ctx.strokeStyle = COLORS[v.status] ?? "#ffffff";
+  ctx.lineWidth = wid;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-len / 2, 0);
+  ctx.lineTo(len / 2, 0);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function draw() {
-  if (!track) return;
-  const { px, scale } = viewOf();
+  if (!staticMsg || !view) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#2e2e2e";
-  ctx.lineWidth = Math.max(2, track.track_width * scale);
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  track.centerline.forEach(([x, y], i) => {
-    const [sx, sy] = px(x, y);
-    if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-  });
-  ctx.closePath();
-  ctx.stroke();
-  const [sx, sy] = px(track.start_line.x, track.start_line.y);
-  const [ex, ey] = px(
-    track.start_line.x + Math.cos(track.start_line.yaw + Math.PI / 2) * track.track_width / 2,
-    track.start_line.y + Math.sin(track.start_line.yaw + Math.PI / 2) * track.track_width / 2
-  );
-  const [ex2, ey2] = px(
-    track.start_line.x - Math.cos(track.start_line.yaw + Math.PI / 2) * track.track_width / 2,
-    track.start_line.y - Math.sin(track.start_line.yaw + Math.PI / 2) * track.track_width / 2
-  );
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(ex, ey);
-  ctx.lineTo(ex2, ey2);
-  ctx.stroke();
-  if (frame) {
-    for (const v of frame.vehicles) {
-      const [cx, cy] = px(v.x, v.y);
-      const r = Math.max(3, 0.25 * scale);
-      ctx.globalAlpha = v.status === "ghost" ? 0.4 : 1.0;
-      ctx.fillStyle = COLORS[v.status] || "#ffffff";
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(v.yaw) * 2.5 * r, cy - Math.sin(v.yaw) * 2.5 * r);
-      ctx.stroke();
-      ctx.globalAlpha = 1.0;
-    }
-  }
+  if (trackLayer) ctx.drawImage(trackLayer, 0, 0);
+  if (!dynamicMsg) return;
+  for (const v of dynamicMsg.vehicles) drawCar(v);
+}
+
+function fmtClock(s) {
+  const m = Math.floor(s / 60);
+  const r = s - m * 60;
+  return String(m).padStart(2, "0") + ":" + r.toFixed(2).padStart(5, "0");
+}
+
+function fmtLap(s) {
+  return s === null ? "-" : s.toFixed(2) + "s";
 }
 
 function hudText() {
-  if (!frame) return "waiting for race state…";
-  const lines = [
-    `t=${frame.time.toFixed(2)}s  phase=${frame.phase}` +
-      (frame.countdown > 0 ? `  countdown=${frame.countdown.toFixed(1)}` : "")
-  ];
-  for (const v of frame.vehicles) {
-    const best = v.best_lap === null ? "-" : v.best_lap.toFixed(2) + "s";
+  if (!dynamicMsg) return "waiting for race state…";
+  const head =
+    "t=" + fmtClock(dynamicMsg.time) + "  " + dynamicMsg.phase +
+    (dynamicMsg.countdown > 0
+      ? "  countdown " + dynamicMsg.countdown.toFixed(1)
+      : "");
+  const lines = [head];
+  for (const v of dynamicMsg.vehicles) {
+    const fin =
+      v.finish_time === null ? "" : "  finished " + fmtClock(v.finish_time);
     lines.push(
-      `${v.name}: ${v.status}  lap ${v.laps}  ${v.speed.toFixed(2)} m/s  ` +
-      `crashes ${v.crashes}  best ${best}`
+      v.name + "  " + v.status + "  lap " + v.laps +
+      "  " + v.speed.toFixed(1) + " m/s" +
+      "  steer " + v.steering.toFixed(2) +
+      "  crashes " + v.crashes +
+      "  best " + fmtLap(v.best_lap) +
+      "  last " + fmtLap(v.last_lap) + fin
     );
   }
   return lines.join("\n");
 }
 
-function refresh() {
+function refreshHud() {
   hud.textContent = hudText();
+  if (dynamicMsg && dynamicMsg.countdown > 0) {
+    countdownEl.hidden = false;
+    countdownEl.textContent = String(Math.ceil(dynamicMsg.countdown));
+  } else {
+    countdownEl.hidden = true;
+  }
+}
+
+function fit() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  view = computeView();
+  prerenderTrack();
   draw();
 }
+
+window.addEventListener("resize", fit);
 
 const ws = new WebSocket(
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"
 );
+ws.onopen = () => { hud.textContent = "connected"; };
 ws.onmessage = (ev) => {
   const msg = JSON.parse(ev.data);
   if (msg.type === "static") {
-    track = msg;
+    staticMsg = msg;
     fit();
-  } else {
-    frame = msg;
-    refresh();
+  } else if (msg.type === "dynamic") {
+    dynamicMsg = msg;
+    refreshHud();
+    draw();
   }
 };
 ws.onclose = () => { hud.textContent = "disconnected"; };
+ws.onerror = () => { hud.textContent = "connection failed"; };
+
 fit();
 </script>
 </body>

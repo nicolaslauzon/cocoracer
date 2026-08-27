@@ -6,6 +6,29 @@
 
 **Status:** ready-for-agent
 
-- [ ] The track is rendered once (offscreen prerender), cars animate with correct heading, and the HUD updates on each dynamic message
-- [ ] The HUD shows lap, speed, status, crash count, best/last lap, and the race timer
-- [ ] The page is a single static asset — no build step, no JS framework
+- [x] The track is rendered once (offscreen prerender), cars animate with correct heading, and the HUD updates on each dynamic message
+- [x] The HUD shows lap, speed, status, crash count, best/last lap, and the race timer
+- [x] The page is a single static asset — no build step, no JS framework
+
+## Comments
+
+- 2026-08-27: Done in `wt-13`. `cocoracer/web/index.html` is now a single
+  static page: vanilla JS on canvas, no framework, no build step, no network
+  fetches beyond the WebSocket.
+  - The static message prerenders the track once to an offscreen canvas
+    (occupied grid cells, a road ribbon stroked to `track_width` along the
+    centerline with a dashed centerline, and the start line); each dynamic
+    message blits that layer and redraws only the cars and HUD, so reskinning
+    later touches neither sim nor protocol.
+  - Cars are capsules (round-capped strokes) rotated to their heading,
+    colored by status — racing blue, paused red, finished green, DNF orange —
+    with ghosts at 40% opacity.
+  - The HUD shows the race clock, phase, and countdown (a large overlay digit
+    while counting down), plus per vehicle: name, status, lap, speed,
+    steering, crash count, best/last lap, and finish time when present.
+  - Tests: `tests/test_web_frontend.py` checks the page exists, pulls nothing
+    external, targets the `/ws` path, and references every field name the
+    serializers emit (names extracted from `protocol.py` at test time, so a
+    renamed key fails) and every `VehicleStatus` value.
+  - Deviation: `scan` arrives with each vehicle but is not rendered — the
+    issue's render list is cars plus HUD; the test whitelists it as unused.
