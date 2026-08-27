@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 
 from cocoracer.config import Config, load_config
+from cocoracer.controller import Controller, ControllerError, load_controller
+from cocoracer.engine import RaceResult, run_race
 from cocoracer.track import Track, build_track
 
 PARAMS_DIR = Path(__file__).resolve().parent.parent / "params"
@@ -83,10 +85,50 @@ def _report(
         print(f"  - {path}")
 
 
+def _load_single(path: Path) -> Controller:
+    try:
+        return load_controller(path)
+    except ControllerError as exc:
+        raise SystemExit(str(exc)) from exc
+
+
+def _print_results(result: RaceResult) -> None:
+    print()
+    print(f"results ({result.track_name}):")
+    for r in result.results:
+        order = f"P{r.finish_order}" if r.finish_order is not None else "-"
+        total = f"{r.total_time:.3f} s" if r.total_time is not None else "-"
+        best = f"{r.best_lap:.3f} s" if r.best_lap is not None else "-"
+        reason = f"  [{r.dnf_reason.value}]" if r.dnf_reason else ""
+        print(
+            f"  {order:<4} {r.name:<20} {r.status.value.upper():<10} "
+            f"{r.laps_completed:>3} laps  {total:>10}  best {best:>10}  "
+            f"crashes: {r.crashes}{reason}"
+        )
+    print(f"race time: {result.time:.3f} s")
+
+
+def _run_time_trial(
+    config: Config, track: Track, controllers: list[Path], args: argparse.Namespace
+) -> int:
+    if len(controllers) != 1:
+        raise SystemExit("time-trial takes exactly one controller")
+    if not args.no_web:
+        print("(web view not implemented yet; running headless)")
+    controller = _load_single(controllers[0])
+    result = run_race(track, config, [controller])
+    _print_results(result)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     config, track_name, track, controllers = _resolve(args)
     _report(config, track_name, track, controllers, args.command)
+    if args.command == "time-trial":
+        return _run_time_trial(config, track, controllers, args)
+    print()
+    print("head-to-head races are not implemented yet (see ticket 04)")
     return 0
 
 

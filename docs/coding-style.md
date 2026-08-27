@@ -41,7 +41,11 @@ pytest
 ## Module layout
 
 - `cocoracer/` — the package: `cli.py` (entry point), `config.py`
-  (YAML → dataclasses), `track.py` (track geometry).
+  (YAML → dataclasses), `track.py` (track geometry), `controller.py`
+  (player controller API + file loader), `dynamics.py` (batched JAX
+  vehicle model), `engine.py` (headless race loop + rules).
+- `controllers/` — player controller files (one class per file); this is
+  the one folder that lives beside the package, since players edit it.
 - `params/` — YAML track/vehicle/sim parameters.
 - `tests/` — mirrors the package, one test file per module.
 - New top-level concepts go inside `cocoracer/`; don't add files at the repo root.

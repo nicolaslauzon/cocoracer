@@ -1,0 +1,109 @@
+"""Player controller contract and file loader."""
+
+import importlib.util
+import itertools
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+from cocoracer.track import Track
+
+
+class ControllerError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class TrackInfo:
+    """Facts about the track handed to a controller at reset."""
+
+    name: str
+    track_length: float
+    width: float
+    start_x: float
+    start_y: float
+    start_yaw: float
+
+
+def make_track_info(track: Track) -> TrackInfo:
+    x, y, yaw = track.start_pose
+    return TrackInfo(
+        name=track.name,
+        track_length=track.track_length,
+        width=track.half_width * 2.0,
+        start_x=x,
+        start_y=y,
+        start_yaw=yaw,
+    )
+
+
+class Controller:
+    """Base class for player controllers.
+
+    Subclass it in a single file and implement `step`. The engine calls
+    `reset` once before the first tick, then `step` once per tick (40 Hz)
+    while the vehicle is racing. One instance serves one vehicle, so
+    instance state persists between ticks.
+    """
+
+    def reset(self, track_info: TrackInfo) -> None:
+        """Called once before the first tick, to initialize internal state."""
+
+    def step(
+        self, x: float, y: float, yaw: float, speed: float, steering_angle: float
+    ) -> tuple[float, float]:
+        """Return (target_speed, target_steering_angle) for this tick."""
+        raise NotImplementedError
+
+
+_MODULE_COUNTER = itertools.count()
+
+
+def load_controller(path: Path | str) -> Controller:
+    """Import a player file and return an instance of its controller class.
+
+    The file must define exactly one concrete subclass of Controller; it
+    is instantiated with no arguments.
+    """
+    file = Path(path)
+    if not file.is_file():
+        raise ControllerError(f"controller file not found: {file}")
+    module_name = f"cocoracer_controller_{file.stem}_{next(_MODULE_COUNTER)}"
+    spec = importlib.util.spec_from_file_location(module_name, file)
+    if spec is None or spec.loader is None:
+        raise ControllerError(f"cannot import controller file: {file}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except ControllerError:
+        raise
+    except Exception as exc:
+        raise ControllerError(f"error importing controller file {file}: {exc}") from exc
+    classes = [
+        obj
+        for obj in vars(module).values()
+        if isinstance(obj, type)
+        and issubclass(obj, Controller)
+        and obj is not Controller
+        and obj.__module__ == module_name
+    ]
+    if len(classes) != 1:
+        found = ", ".join(c.__name__ for c in classes) or "none"
+        raise ControllerError(
+            f"controller file {file} must define exactly one concrete Controller "
+            f"subclass (found: {found})"
+        )
+    cls: type[Controller] = classes[0]
+    if cls.step is Controller.step:
+        raise ControllerError(
+            f"controller class {cls.__name__} is not concrete (it does not "
+            f"override step)"
+        )
+    try:
+        return cls()
+    except TypeError as exc:
+        raise ControllerError(
+            f"controller class {cls.__name__} must be instantiable with no "
+            f"arguments: {exc}"
+        ) from exc
