@@ -111,6 +111,7 @@ class RaceEngine:
         self.track = track
         self.config = config
         self.time = 0.0
+        self._last_scans: list[np.ndarray | None] = [None] * len(controllers)
         self._dt = config.sim.tick_dt
         self._laps = config.race.laps
         self._time_limit = config.race.time_limit
@@ -168,6 +169,33 @@ class RaceEngine:
         for v in self.vehicles:
             v.anchor(self.track, self.time)
 
+    @property
+    def finished(self) -> bool:
+        """True once every vehicle has finished or DNF'd."""
+        return all(v.state.status in _TERMINAL for v in self.vehicles)
+
+    @property
+    def phase(self) -> str:
+        """Race phase: "countdown", "racing", or "finished"."""
+        if self._countdown_left > 0:
+            return "countdown"
+        return "racing" if not self.finished else "finished"
+
+    @property
+    def countdown(self) -> float:
+        """Countdown time remaining, in seconds (0.0 once released)."""
+        return self._countdown_left * self._dt
+
+    @property
+    def last_scans(self) -> list[np.ndarray | None]:
+        """Each vehicle's last computed laser scan, in vehicle order."""
+        return self._last_scans
+
+    @property
+    def results(self) -> RaceResult:
+        """The race results, ranked; valid once the race is finished."""
+        return self._results()
+
     def tick(self) -> None:
         """Advance the race by one tick (1/40 s)."""
         self.time += self._dt
@@ -185,9 +213,9 @@ class RaceEngine:
 
     def run(self) -> RaceResult:
         """Run the race to completion and return the results."""
-        while any(v.state.status not in _TERMINAL for v in self.vehicles):
+        while not self.finished:
             self.tick()
-        return self._results()
+        return self.results
 
     def snapshot(self) -> RaceSnapshot:
         """Build a read-only snapshot of the current race state."""
@@ -225,6 +253,11 @@ class RaceEngine:
         scans = fleet_scan(
             self.track, stepped, self._beam_angles, self._collision_distance
         )
+        k = 0
+        for i, v in enumerate(self.vehicles):
+            if v.state.may_step:
+                self._last_scans[i] = scans[k]
+                k += 1
         for v, scan in zip(stepped, scans, strict=True):
             speed, steering = v.controller.step(
                 v.x, v.y, v.yaw, v.speed, v.steering, scan

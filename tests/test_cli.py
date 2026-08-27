@@ -1,6 +1,7 @@
 """Tests for the cocoracer CLI."""
 
 import shutil
+import socket
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,12 @@ from cocoracer.cli import main
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STUB = REPO_ROOT / "controllers" / "open_loop.py"
 PARAMS = REPO_ROOT / "params" / "default.yaml"
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
 
 def _time_trial_argv(*extra: str) -> list[str]:
@@ -36,13 +43,26 @@ def test_time_trial_stub_dnf_headless(capsys: pytest.CaptureFixture[str]) -> Non
     assert "race time:" in out
 
 
-def test_time_trial_without_no_web_prints_headless_note(
-    capsys: pytest.CaptureFixture[str],
+def test_time_trial_live_starts_web_view_and_runs(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    rc = main(_time_trial_argv())
+    # A short time limit ends the stub's race fast in wall-clock pace.
+    shutil.copytree(PARAMS.parent / "tracks", tmp_path / "tracks")
+    short = tmp_path / "params.yaml"
+    text = PARAMS.read_text().replace("time_limit: 300.0", "time_limit: 4.0")
+    assert text != PARAMS.read_text()
+    short.write_text(text)
+    port = _free_port()
+    argv = _time_trial_argv("--port", str(port))
+    argv[argv.index("--params") + 1] = str(short)
+    rc = main(argv)
     out = capsys.readouterr().out
     assert rc == 0
-    assert "(web view not implemented yet; running headless)" in out
+    assert f"web view: http://127.0.0.1:{port}" in out
+    assert "(web view not implemented yet; running headless)" not in out
+    assert "results (stadium):" in out
+    assert "DNF" in out
+    assert "[timeout]" in out
 
 
 def test_time_trial_rejects_two_controllers() -> None:

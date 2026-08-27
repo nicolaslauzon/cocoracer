@@ -1,10 +1,11 @@
 import argparse
 import sys
+import time
 from pathlib import Path
 
 from cocoracer.config import Config, load_config
 from cocoracer.controller import Controller, ControllerError, load_controller
-from cocoracer.engine import RaceResult, run_race
+from cocoracer.engine import RaceEngine, RaceResult, run_race
 from cocoracer.track import Track, build_track
 
 PARAMS_DIR = Path(__file__).resolve().parent.parent / "params"
@@ -122,17 +123,56 @@ def _print_results(result: RaceResult) -> None:
     print(f"race time: {result.time:.3f} s")
 
 
+def _run_live(
+    config: Config,
+    track: Track,
+    instances: list[Controller],
+    names: list[str] | None,
+    mode: str,
+    port: int,
+) -> RaceResult:
+    from cocoracer.web.server import WebServer
+
+    engine = RaceEngine(track, config, instances, names, mode=mode)
+    server = WebServer(engine, port=port)
+    server.start()
+    print(f"web view: {server.url}")
+    try:
+        next_tick = time.monotonic()
+        period = config.sim.tick_dt
+        while not engine.finished:
+            engine.tick()
+            next_tick += period
+            delay = next_tick - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+    finally:
+        server.stop()
+    return engine.results
+
+
+def _run(
+    config: Config,
+    track: Track,
+    instances: list[Controller],
+    names: list[str] | None,
+    mode: str,
+    args: argparse.Namespace,
+) -> int:
+    if args.no_web:
+        result = run_race(track, config, instances, names, mode=mode)
+    else:
+        result = _run_live(config, track, instances, names, mode, args.port)
+    _print_results(result)
+    return 0
+
+
 def _run_time_trial(
     config: Config, track: Track, controllers: list[Path], args: argparse.Namespace
 ) -> int:
     if len(controllers) != 1:
         raise SystemExit("time-trial takes exactly one controller")
-    if not args.no_web:
-        print("(web view not implemented yet; running headless)")
-    controller = _load_single(controllers[0])
-    result = run_race(track, config, [controller])
-    _print_results(result)
-    return 0
+    return _run(config, track, [_load_single(controllers[0])], None, "time-trial", args)
 
 
 def _run_race(
@@ -140,12 +180,8 @@ def _run_race(
 ) -> int:
     if len(controllers) < 2:
         raise SystemExit("race takes two or more controllers")
-    if not args.no_web:
-        print("(web view not implemented yet; running headless)")
     instances = [_load_single(path) for path in controllers]
-    result = run_race(track, config, instances, _names_for(controllers), mode="race")
-    _print_results(result)
-    return 0
+    return _run(config, track, instances, _names_for(controllers), "race", args)
 
 
 def main(argv: list[str] | None = None) -> int:

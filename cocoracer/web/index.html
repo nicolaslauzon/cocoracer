@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>cocoracer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #141414; overflow: hidden; }
+  canvas { display: block; }
+  #hud { position: fixed; top: 10px; left: 10px; color: #e8e8e8;
+         font: 13px/1.5 monospace; white-space: pre; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<pre id="hud">connecting…</pre>
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const hud = document.getElementById("hud");
+const COLORS = { racing: "#4da3ff", paused: "#ff5555", ghost: "#9a9a9a",
+                 finished: "#57d364", dnf: "#ffa94d" };
+let track = null;
+let frame = null;
+
+function fit() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  draw();
+}
+addEventListener("resize", fit);
+
+function viewOf() {
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (const [x, y] of track.centerline) {
+    minx = Math.min(minx, x); maxx = Math.max(maxx, x);
+    miny = Math.min(miny, y); maxy = Math.max(maxy, y);
+  }
+  const pad = track.track_width * 2;
+  minx -= pad; miny -= pad; maxx += pad; maxy += pad;
+  const scale = Math.min(canvas.width / (maxx - minx), canvas.height / (maxy - miny));
+  const ox = (canvas.width - (maxx - minx) * scale) / 2;
+  const oy = (canvas.height - (maxy - miny) * scale) / 2;
+  const px = (x, y) => [ox + (x - minx) * scale, oy + (maxy - y) * scale];
+  return { px, scale };
+}
+
+function draw() {
+  if (!track) return;
+  const { px, scale } = viewOf();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#2e2e2e";
+  ctx.lineWidth = Math.max(2, track.track_width * scale);
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  track.centerline.forEach(([x, y], i) => {
+    const [sx, sy] = px(x, y);
+    if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+  });
+  ctx.closePath();
+  ctx.stroke();
+  const [sx, sy] = px(track.start_line.x, track.start_line.y);
+  const [ex, ey] = px(
+    track.start_line.x + Math.cos(track.start_line.yaw + Math.PI / 2) * track.track_width / 2,
+    track.start_line.y + Math.sin(track.start_line.yaw + Math.PI / 2) * track.track_width / 2
+  );
+  const [ex2, ey2] = px(
+    track.start_line.x - Math.cos(track.start_line.yaw + Math.PI / 2) * track.track_width / 2,
+    track.start_line.y - Math.sin(track.start_line.yaw + Math.PI / 2) * track.track_width / 2
+  );
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex2, ey2);
+  ctx.stroke();
+  if (frame) {
+    for (const v of frame.vehicles) {
+      const [cx, cy] = px(v.x, v.y);
+      const r = Math.max(3, 0.25 * scale);
+      ctx.globalAlpha = v.status === "ghost" ? 0.4 : 1.0;
+      ctx.fillStyle = COLORS[v.status] || "#ffffff";
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(v.yaw) * 2.5 * r, cy - Math.sin(v.yaw) * 2.5 * r);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    }
+  }
+}
+
+function hudText() {
+  if (!frame) return "waiting for race state…";
+  const lines = [
+    `t=${frame.time.toFixed(2)}s  phase=${frame.phase}` +
+      (frame.countdown > 0 ? `  countdown=${frame.countdown.toFixed(1)}` : "")
+  ];
+  for (const v of frame.vehicles) {
+    const best = v.best_lap === null ? "-" : v.best_lap.toFixed(2) + "s";
+    lines.push(
+      `${v.name}: ${v.status}  lap ${v.laps}  ${v.speed.toFixed(2)} m/s  ` +
+      `crashes ${v.crashes}  best ${best}`
+    );
+  }
+  return lines.join("\n");
+}
+
+function refresh() {
+  hud.textContent = hudText();
+  draw();
+}
+
+const ws = new WebSocket(
+  (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"
+);
+ws.onmessage = (ev) => {
+  const msg = JSON.parse(ev.data);
+  if (msg.type === "static") {
+    track = msg;
+    fit();
+  } else {
+    frame = msg;
+    refresh();
+  }
+};
+ws.onclose = () => { hud.textContent = "disconnected"; };
+fit();
+</script>
+</body>
+</html>
