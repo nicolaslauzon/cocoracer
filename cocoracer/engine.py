@@ -8,47 +8,32 @@ release. Per tick, in order: the controllers that may be stepped
 (racing and ghost) are each handed a fresh full-circle laser scan —
 walls plus the collision circles of racing vehicles, first hit wins
 per beam — and stepped, the non-terminal vehicles are integrated by
-the batched JAX dynamics, crash timers advance, collisions are
-checked (wall per racing vehicle against the track's occupancy grid
-with the vehicle footprint, pairwise vehicle-to-vehicle between
-racing vehicles — ghosts and paused vehicles can neither hit nor be
-hit), crash handling runs (reset to the nearest centerline pose,
-pause, ghost), laps are booked behind the start/finish line plus
-mid-track checkpoint, and the race timeout is checked.
+the batched JAX dynamics, crash timers advance, crashes are detected
+in one pass (racing vehicles whose footprint touches a wall, then
+racing pairs closer than the collision distance — each vehicle at
+most once, ghosts and paused vehicles can neither hit nor be hit)
+and the crashed vehicles are reset to the nearest centerline pose
+with the pause or DNF registered, laps are booked behind the
+start/finish line plus mid-track checkpoint, and the race timeout is
+checked.
 """
 
-import math
 from dataclasses import dataclass
 
 import numpy as np
 
+from cocoracer.collision import collide
 from cocoracer.config import Config
 from cocoracer.controller import Controller, make_track_info
 from cocoracer.dynamics import Dynamics, DynamicsParams
 from cocoracer.lap_tracker import LapTracker
 from cocoracer.race_state import DnfReason, RaceState, VehicleStatus
-from cocoracer.sensor import scan_vehicles, scan_walls
+from cocoracer.sensor import fleet_scan
 from cocoracer.track import Track
+from cocoracer.vehicle import Vehicle
 
 _TERMINAL = (VehicleStatus.FINISHED, VehicleStatus.DNF)
 _MODES = ("time-trial", "race")
-
-
-@dataclass
-class Vehicle:
-    """Per-vehicle state observed at the engine seam."""
-
-    name: str
-    controller: Controller
-    state: RaceState
-    tracker: LapTracker
-    x: float = 0.0
-    y: float = 0.0
-    yaw: float = 0.0
-    speed: float = 0.0
-    steering: float = 0.0
-    target_speed: float = 0.0
-    target_steering: float = 0.0
 
 
 @dataclass
@@ -168,8 +153,7 @@ class RaceEngine:
             config.sim.physics_substeps,
         )
         for v in self.vehicles:
-            s, _, _ = track.to_frenet(v.x, v.y, v.yaw)
-            v.tracker.start(s, self.time)
+            v.anchor(track, self.time)
             v.controller.reset(make_track_info(track))
         self._dynamics.warmup(len(self.vehicles))
 
@@ -182,8 +166,7 @@ class RaceEngine:
     def _release(self) -> None:
         """Re-anchor the lap trackers at the grid poses on release."""
         for v in self.vehicles:
-            s, _, _ = self.track.to_frenet(v.x, v.y, v.yaw)
-            v.tracker.start(s, self.time)
+            v.anchor(self.track, self.time)
 
     def tick(self) -> None:
         """Advance the race by one tick (1/40 s)."""
@@ -196,8 +179,7 @@ class RaceEngine:
         self._step_controllers()
         self._integrate()
         self._advance_timers()
-        self._check_walls()
-        self._check_collisions()
+        self._check_crashes()
         self._book_laps()
         self._check_timeout()
 
@@ -240,25 +222,9 @@ class RaceEngine:
         stepped = [v for v in self.vehicles if v.state.may_step]
         if not stepped:
             return
-        poses = np.array([[v.x, v.y, v.yaw] for v in stepped])
-        scans = scan_walls(self.track, poses, self._beam_angles)
-        racing = [v for v in self.vehicles if v.state.is_racing]
-        if racing:
-            target_poses = np.array([[v.x, v.y] for v in racing])
-            racing_index = {id(v): i for i, v in enumerate(racing)}
-            exclude = np.array(
-                [racing_index.get(id(v), -1) for v in stepped], dtype=np.intp
-            )
-            scans = np.minimum(
-                scans,
-                scan_vehicles(
-                    poses,
-                    self._beam_angles,
-                    target_poses,
-                    exclude,
-                    self._collision_distance,
-                ),
-            )
+        scans = fleet_scan(
+            self.track, stepped, self._beam_angles, self._collision_distance
+        )
         for v, scan in zip(stepped, scans, strict=True):
             speed, steering = v.controller.step(
                 v.x, v.y, v.yaw, v.speed, v.steering, scan
@@ -280,44 +246,20 @@ class RaceEngine:
         for v in self.vehicles:
             v.state.advance()
 
-    def _check_walls(self) -> None:
-        for v in self.vehicles:
-            if not v.state.is_racing:
-                continue
-            if self.track.footprint_in_wall(v.x, v.y, v.yaw, self._length, self._width):
-                self._handle_crash(v)
-
-    def _check_collisions(self) -> None:
-        racing = [v for v in self.vehicles if v.state.is_racing]
-        for i in range(len(racing)):
-            a = racing[i]
-            for j in range(i + 1, len(racing)):
-                b = racing[j]
-                if math.hypot(a.x - b.x, a.y - b.y) < self._collision_distance:
-                    self._handle_crash(a)
-                    self._handle_crash(b)
-
-    def _handle_crash(self, v: Vehicle) -> None:
-        dnf = v.state.crash()
-        v.speed = 0.0
-        v.steering = 0.0
-        v.target_speed = 0.0
-        v.target_steering = 0.0
-        if dnf:
-            return
-        x, y, yaw = self.track.nearest_centerline(v.x, v.y)
-        v.x, v.y, v.yaw = x, y, yaw
-        s, _, _ = self.track.to_frenet(v.x, v.y, v.yaw)
-        v.tracker.resync(s)
+    def _check_crashes(self) -> None:
+        crashed = collide(
+            self.track,
+            self.vehicles,
+            self._length,
+            self._width,
+            self._collision_distance,
+        )
+        for v in crashed:
+            v.crash(self.track)
 
     def _book_laps(self) -> None:
         for v in self._active():
-            if not v.state.is_racing:
-                continue
-            s, _, _ = self.track.to_frenet(v.x, v.y, v.yaw)
-            lap_time = v.tracker.feed(s, self.time)
-            if lap_time is not None:
-                v.state.record_lap(lap_time, self.time)
+            v.record(self.track, self.time)
 
     def _check_timeout(self) -> None:
         if self.time < self._time_limit:

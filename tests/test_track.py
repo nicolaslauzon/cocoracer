@@ -1,4 +1,5 @@
 import math
+from collections.abc import Callable
 
 import numpy as np
 import pytest
@@ -14,6 +15,10 @@ F1_SCALE = 1.0 / 12.0
 
 def wrap(a: float) -> float:
     return (a + np.pi) % (2 * np.pi) - np.pi
+
+
+def _angles(count: int) -> np.ndarray:
+    return np.arange(count) * (2.0 * np.pi / count)
 
 
 def test_stadium_closes(stadium: Track) -> None:
@@ -161,6 +166,65 @@ def test_f1_track_grid_matches_half_width(
     dist, _ = tree.query(np.column_stack([gx.ravel(), gy.ravel()]))
     expected = dist.reshape(ny, nx) > track.half_width
     assert np.array_equal(track.occupied, expected)
+
+
+def test_beam_distances_read_known_wall(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    occupied = np.zeros((21, 21), dtype=bool)
+    occupied[:, 11:] = True
+    track = synthetic_track_factory(occupied)
+    scan = track.beam_distances(np.array([[0.0, 1.0, 0.0]]), _angles(72))
+    # Grid-sampled hits land within ~1.5 resolutions of the true wall face:
+    # occupancy is judged at cell centers, so the first occupied sample can
+    # sit one full step past the face.
+    assert scan[0, 0] == pytest.approx(1.1, abs=0.15)
+
+
+def test_beam_distances_first_obstacle_wins(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    occupied = np.zeros((21, 21), dtype=bool)
+    occupied[:, 5:7] = True
+    occupied[:, 12:14] = True
+    track = synthetic_track_factory(occupied)
+    scan = track.beam_distances(np.array([[0.0, 1.0, 0.0]]), _angles(72))
+    assert scan[0, 0] == pytest.approx(0.5, abs=0.15)
+
+
+def test_beam_distances_no_hit_reads_inf(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    occupied = np.zeros((21, 21), dtype=bool)
+    track = synthetic_track_factory(occupied)
+    scan = track.beam_distances(np.array([[1.0, 1.0, 0.0]]), _angles(72))
+    assert np.all(np.isinf(scan))
+
+
+def test_beam_distances_hit_only_the_wall_that_is_there(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    occupied = np.zeros((21, 21), dtype=bool)
+    occupied[15:, :] = True
+    track = synthetic_track_factory(occupied)
+    scan = track.beam_distances(np.array([[1.0, 0.05, 0.0]]), _angles(72))
+    assert scan[0, 18] == pytest.approx(1.5, abs=0.15)
+    assert np.isinf(scan[0, 0])
+    assert np.isinf(scan[0, 54])
+
+
+def test_beam_distances_multiple_vehicles_in_one_call(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    occupied = np.zeros((21, 21), dtype=bool)
+    occupied[:, 11:] = True
+    track = synthetic_track_factory(occupied)
+    poses = np.array([[0.0, 1.0, 0.0], [0.0, 1.0, np.pi]])
+    scan = track.beam_distances(poses, _angles(72))
+    assert scan.shape == (2, 72)
+    assert scan[0, 0] == pytest.approx(1.1, abs=0.15)
+    assert np.isinf(scan[1, 0])
+    assert scan[1, 36] == pytest.approx(1.1, abs=0.15)
 
 
 def test_centerline_builds_closed_ring() -> None:

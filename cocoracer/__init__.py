@@ -9,7 +9,6 @@ from cocoracer.engine import (
     RaceEngine,
     RaceResult,
     RaceSnapshot,
-    Vehicle,
     VehicleResult,
     VehicleSnapshot,
     run_race,
@@ -17,6 +16,7 @@ from cocoracer.engine import (
 from cocoracer.lap_tracker import LapTracker
 from cocoracer.race_state import DnfReason, VehicleStatus
 from cocoracer.track import Track, TrackError, build_track
+from cocoracer.vehicle import Vehicle
 
 __all__ = [
     "Config",

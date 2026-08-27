@@ -1,81 +1,187 @@
-"""Direct geometry tests for the wall laser scan."""
+"""Tests for the fleet laser scan: visibility policy and first-hit merge."""
+
+import math
+from collections.abc import Callable
 
 import numpy as np
 import pytest
-from scipy.interpolate import CubicSpline
-from scipy.spatial import cKDTree
 
-from cocoracer.sensor import scan_walls
+from cocoracer.config import Config
+from cocoracer.controller import Controller
+from cocoracer.lap_tracker import LapTracker
+from cocoracer.race_state import RaceState, VehicleStatus
+from cocoracer.sensor import fleet_scan
 from cocoracer.track import Track
+from cocoracer.vehicle import Vehicle
 
 
-def _synthetic_track(occupied: np.ndarray, resolution: float = 0.1) -> Track:
-    ny, nx = occupied.shape
-    spline = CubicSpline([0.0, 1.0], [0.0, 1.0])
-    return Track(
-        name="synthetic",
-        half_width=0.5,
-        resolution=resolution,
-        track_length=10.0,
-        centerline=np.zeros((2, 3)),
-        spline_x=spline,
-        spline_y=spline,
-        grid_origin=(0.0, 0.0),
-        grid_shape=(ny, nx),
-        occupied=occupied,
-        frenet_tree=cKDTree(np.zeros((1, 2))),
-        frenet_s=np.zeros(1),
-    )
+class _Still(Controller):
+    """Commands zero speed and zero steering."""
+
+    def step(
+        self,
+        x: float,
+        y: float,
+        yaw: float,
+        speed: float,
+        steering_angle: float,
+        laser_scan: np.ndarray,
+    ) -> tuple[float, float]:
+        return 0.0, 0.0
 
 
 def _angles(count: int) -> np.ndarray:
     return np.arange(count) * (2.0 * np.pi / count)
 
 
-def test_beam_reads_known_wall_distance() -> None:
+def _vehicle(
+    track: Track,
+    x: float,
+    y: float,
+    yaw: float = 0.0,
+    status: VehicleStatus = VehicleStatus.RACING,
+) -> Vehicle:
+    v = Vehicle(
+        name="v",
+        controller=_Still(),
+        state=RaceState(pause_ticks=20, ghost_ticks=60, max_crashes=5, laps_target=3),
+        tracker=LapTracker(track.track_length, track.checkpoint_s),
+        x=x,
+        y=y,
+        yaw=yaw,
+    )
+    v.state.status = status
+    return v
+
+
+def test_fleet_scan_reads_wall(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
     occupied = np.zeros((21, 21), dtype=bool)
     occupied[:, 11:] = True
-    track = _synthetic_track(occupied)
-    scan = scan_walls(track, np.array([[0.0, 1.0, 0.0]]), _angles(72))
-    # Grid-sampled hits land within ~1.5 resolutions of the true wall face:
-    # occupancy is judged at cell centers, so the first occupied sample can
-    # sit one full step past the face.
+    track = synthetic_track_factory(occupied)
+    scan = fleet_scan(track, [_vehicle(track, 0.0, 1.0)], _angles(72), 0.5)
     assert scan[0, 0] == pytest.approx(1.1, abs=0.15)
 
 
-def test_first_obstacle_wins() -> None:
+def test_fleet_scan_row_per_vehicle_in_fleet_order(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
     occupied = np.zeros((21, 21), dtype=bool)
-    occupied[:, 5:7] = True
-    occupied[:, 12:14] = True
-    track = _synthetic_track(occupied)
-    scan = scan_walls(track, np.array([[0.0, 1.0, 0.0]]), _angles(72))
-    assert scan[0, 0] == pytest.approx(0.5, abs=0.15)
+    occupied[:, 11:] = True
+    track = synthetic_track_factory(occupied)
+    a = _vehicle(track, 0.0, 0.3)
+    b = _vehicle(track, 0.0, 1.7)
+    scan = fleet_scan(track, [a, b], _angles(72), 0.5)
+    assert scan.shape == (2, 72)
+    assert scan[0, 0] == pytest.approx(1.1, abs=0.15)
+    assert scan[1, 0] == pytest.approx(1.1, abs=0.15)
+    # Each vehicle's beam aimed at the other (beam 18 is +y, beam 54 is
+    # -y) reads the collision circle at 1.4 - 0.5, not the wall.
+    assert scan[0, 18] == pytest.approx(0.9, abs=1e-6)
+    assert scan[1, 54] == pytest.approx(0.9, abs=1e-6)
 
 
-def test_no_hit_beam_reads_inf() -> None:
+def test_fleet_scan_no_hit_beam_reads_inf(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
     occupied = np.zeros((21, 21), dtype=bool)
-    track = _synthetic_track(occupied)
-    scan = scan_walls(track, np.array([[1.0, 1.0, 0.0]]), _angles(72))
+    track = synthetic_track_factory(occupied)
+    scan = fleet_scan(track, [_vehicle(track, 1.0, 1.0)], _angles(72), 0.5)
     assert np.all(np.isinf(scan))
 
 
-def test_beams_hit_only_the_wall_that_is_there() -> None:
-    occupied = np.zeros((21, 21), dtype=bool)
-    occupied[15:, :] = True
-    track = _synthetic_track(occupied)
-    scan = scan_walls(track, np.array([[1.0, 0.05, 0.0]]), _angles(72))
-    assert scan[0, 18] == pytest.approx(1.5, abs=0.15)
-    assert np.isinf(scan[0, 0])
-    assert np.isinf(scan[0, 54])
-
-
-def test_multiple_vehicles_in_one_call() -> None:
+def test_first_hit_wins_when_vehicle_is_nearer(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
     occupied = np.zeros((21, 21), dtype=bool)
     occupied[:, 11:] = True
-    track = _synthetic_track(occupied)
-    poses = np.array([[0.0, 1.0, 0.0], [0.0, 1.0, np.pi]])
-    scan = scan_walls(track, poses, _angles(72))
-    assert scan.shape == (2, 72)
+    track = synthetic_track_factory(occupied)
+    scan = fleet_scan(
+        track, [_vehicle(track, 0.0, 1.0), _vehicle(track, 0.9, 1.0)], _angles(72), 0.5
+    )
+    assert scan[0, 0] == pytest.approx(0.4, abs=1e-6)
+
+
+def test_first_hit_wins_when_wall_is_nearer(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    occupied = np.zeros((21, 21), dtype=bool)
+    occupied[:, 11:] = True
+    track = synthetic_track_factory(occupied)
+    scan = fleet_scan(
+        track, [_vehicle(track, 0.0, 1.0), _vehicle(track, 2.0, 1.0)], _angles(72), 0.5
+    )
     assert scan[0, 0] == pytest.approx(1.1, abs=0.15)
-    assert np.isinf(scan[1, 0])
-    assert scan[1, 36] == pytest.approx(1.1, abs=0.15)
+
+
+def test_scan_reads_wall_at_half_track_width(stadium: Track, config: Config) -> None:
+    scan = fleet_scan(
+        stadium,
+        [_vehicle(stadium, 3.0, 0.0)],
+        config.sensor.beam_angles,
+        config.race.collision_distance,
+    )
+    b = config.sensor.beam_count
+    tol = 1.5 * stadium.resolution
+    assert scan[0, b // 4] == pytest.approx(stadium.half_width, abs=tol)
+    assert scan[0, 3 * b // 4] == pytest.approx(stadium.half_width, abs=tol)
+
+
+def test_racing_vehicle_appears_in_scan_at_correct_distance(
+    stadium: Track, config: Config
+) -> None:
+    scanner = _vehicle(stadium, 3.0, 0.0)
+    target = _vehicle(stadium, 5.0, 0.0)
+    scans = fleet_scan(
+        stadium,
+        [scanner, target],
+        config.sensor.beam_angles,
+        config.race.collision_distance,
+    )
+    # 2 m apart, so the beam aimed at the other reads the collision circle
+    # at 2 - r, well before the wall.
+    expected = 2.0 - config.race.collision_distance
+    assert scans[0, 0] == pytest.approx(expected, abs=1e-6)
+    assert scans[1, 36] == pytest.approx(expected, abs=1e-6)
+
+
+def test_vehicle_never_sees_itself(stadium: Track, config: Config) -> None:
+    scan = fleet_scan(
+        stadium,
+        [_vehicle(stadium, 5.0, 0.0)],
+        config.sensor.beam_angles,
+        config.race.collision_distance,
+    )
+    # With no other vehicle, the backward beam reads the wall past 5.0
+    # instead of the vehicle's own collision circle at 2 - r.
+    assert math.isfinite(scan[0, 36])
+    assert scan[0, 36] > 2.0 - config.race.collision_distance
+
+
+def test_ghost_vehicle_is_absent_from_scan(stadium: Track, config: Config) -> None:
+    scanner = _vehicle(stadium, 3.0, 0.0)
+    ghost = _vehicle(stadium, 5.0, 0.0, status=VehicleStatus.GHOST)
+    scans = fleet_scan(
+        stadium,
+        [scanner, ghost],
+        config.sensor.beam_angles,
+        config.race.collision_distance,
+    )
+    # If the ghost were visible, beam 0 would read 2 - r; it reads the wall
+    # past the ghost instead.
+    assert scans[0, 0] > 2.0 - config.race.collision_distance
+    assert math.isfinite(scans[0, 0])
+
+
+def test_paused_vehicle_is_absent_from_scan(stadium: Track, config: Config) -> None:
+    scanner = _vehicle(stadium, 3.0, 0.0)
+    pauser = _vehicle(stadium, 5.0, 0.0, status=VehicleStatus.PAUSED)
+    scans = fleet_scan(
+        stadium,
+        [scanner, pauser],
+        config.sensor.beam_angles,
+        config.race.collision_distance,
+    )
+    assert scans[0, 0] > 2.0 - config.race.collision_distance
+    assert math.isfinite(scans[0, 0])

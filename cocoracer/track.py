@@ -126,6 +126,60 @@ class Track:
             for px, py in _footprint_points(x, y, yaw, length, width, self.resolution)
         )
 
+    def beam_distances(self, poses: np.ndarray, beam_angles: np.ndarray) -> np.ndarray:
+        """Distance from each pose to the first wall along each beam.
+
+        Marches each beam over the occupancy grid at grid-resolution
+        steps. There is no max range: a beam that hits no occupied cell
+        reports ``np.inf``.
+        """
+        res = self.resolution
+        ox, oy = self.grid_origin
+        ny, nx = self.grid_shape
+        occupied = self.occupied
+
+        n = poses.shape[0]
+        b = beam_angles.shape[0]
+        x = poses[:, 0]
+        y = poses[:, 1]
+        theta = poses[:, 2][:, None] + beam_angles[None, :]
+        px = np.repeat(x, b)
+        py = np.repeat(y, b)
+        dx = np.cos(theta).ravel()
+        dy = np.sin(theta).ravel()
+
+        x_max = ox + nx * res
+        y_max = oy + ny * res
+        start_d2 = _dist2_to_grid(px, py, ox, oy, x_max, y_max)
+        diag = int(np.ceil(np.hypot(nx, ny)))
+        max_steps = diag + int(np.ceil(np.sqrt(start_d2.max()) / res)) + 1
+
+        dist = np.full(px.shape, np.inf)
+        alive = np.ones(px.shape, dtype=bool)
+        prev_d2 = start_d2
+        for k in range(1, max_steps + 1):
+            if not alive.any():
+                break
+            d = k * res
+            sx = px + d * dx
+            sy = py + d * dy
+            ix = np.floor((sx - ox) / res).astype(np.intp)
+            iy = np.floor((sy - oy) / res).astype(np.intp)
+            in_bounds = alive & (ix >= 0) & (iy >= 0) & (ix < nx) & (iy < ny)
+            hit = in_bounds & occupied[np.clip(iy, 0, ny - 1), np.clip(ix, 0, nx - 1)]
+            if hit.any():
+                dist[hit] = d
+                alive &= ~hit
+            # The grid is convex, so a ray's distance to it decreases then
+            # increases: once an out-of-grid ray is moving away, it can never
+            # re-enter, and the march ends with a no-hit.
+            d2 = _dist2_to_grid(sx, sy, ox, oy, x_max, y_max)
+            escaped = alive & ~in_bounds & (d2 > prev_d2 + 1e-12)
+            if escaped.any():
+                alive &= ~escaped
+            prev_d2 = np.where(alive, d2, prev_d2)
+        return dist.reshape(n, b)
+
 
 def _generate_centerline(segments: list) -> np.ndarray:
     x = y = yaw = 0.0
@@ -231,6 +285,15 @@ def _build_grid(
     dist, _ = tree.query(cell_centers)
     occupied = dist.reshape(ny, nx) > half_width
     return (min_x, min_y), (ny, nx), occupied
+
+
+def _dist2_to_grid(
+    x: np.ndarray, y: np.ndarray, ox: float, oy: float, x_max: float, y_max: float
+) -> np.ndarray:
+    dx = np.where(x < ox, ox - x, np.where(x > x_max, x - x_max, 0.0))
+    dy = np.where(y < oy, oy - y, np.where(y > y_max, y - y_max, 0.0))
+    d2: np.ndarray = dx * dx + dy * dy
+    return d2
 
 
 def _footprint_points(

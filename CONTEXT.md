@@ -56,6 +56,13 @@ The post-crash state in which a vehicle holds still producing no output and its
 controller is not consulted, lasting a fixed duration.
 _Avoid_: freeze, stun, reset
 
+**Crash**:
+The event of a racing vehicle touching a wall or closing within the collision
+distance of another racing vehicle; the vehicle's motion is zeroed and it
+takes a pause, or a DNF at the crash limit, and unless it is a DNF it is
+reset to the nearest centerline pose.
+_Avoid_: accident, wreck, spin
+
 **Time trial**:
 A race mode in which one controller races alone for a fixed lap count.
 _Avoid_: solo, practice, qualification

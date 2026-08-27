@@ -71,23 +71,6 @@ class ScanRecorder(Controller):
         return self._speed, 0.0
 
 
-def test_scan_reads_wall_at_half_track_width(stadium: Track, config: Config) -> None:
-    recorder = ScanRecorder(0.0)
-    engine = RaceEngine(stadium, config, [recorder], ["scanner"])
-    v = engine.vehicles[0]
-    v.x, v.y, v.yaw = 3.0, 0.0, 0.0
-    engine.tick()
-    scan = recorder.scans[0]
-    assert scan.shape == (config.sensor.beam_count,)
-    b = config.sensor.beam_count
-    # Grid-sampled hits land within ~1.5 resolutions of the true wall:
-    # occupancy is judged at cell centers, and the first occupied sample
-    # can sit one full step past the face.
-    tol = 1.5 * stadium.resolution
-    assert scan[b // 4] == pytest.approx(stadium.half_width, abs=tol)
-    assert scan[3 * b // 4] == pytest.approx(stadium.half_width, abs=tol)
-
-
 def test_scan_arrives_every_tick_while_steppable(
     stadium: Track, config: Config
 ) -> None:
@@ -104,69 +87,6 @@ def test_scan_arrives_every_tick_while_steppable(
     assert VehicleStatus.RACING in statuses
     assert VehicleStatus.GHOST in statuses
     assert VehicleStatus.PAUSED not in statuses
-
-
-def test_racing_vehicle_appears_in_scan_at_correct_distance(
-    stadium: Track, config: Config
-) -> None:
-    scanner = ScanRecorder(0.0)
-    target = ScanRecorder(0.0)
-    engine = RaceEngine(stadium, config, [scanner, target], ["scanner", "target"])
-    sc, tg = engine.vehicles
-    sc.x, sc.y, sc.yaw = 3.0, 0.0, 0.0
-    tg.x, tg.y, tg.yaw = 5.0, 0.0, 0.0
-    engine.tick()
-    # 2 m apart, so each beam aimed at the other meets the collision
-    # circle at 2 - r, well before the wall (~3.5-4.5 m away).
-    expected = 2.0 - config.race.collision_distance
-    assert scanner.scans[0][0] == pytest.approx(expected, abs=1e-6)
-    assert target.scans[0][36] == pytest.approx(expected, abs=1e-6)
-    # A vehicle never sees itself: with the target removed, the same
-    # beam reads the wall instead.
-    solo = ScanRecorder(0.0)
-    engine2 = RaceEngine(stadium, config, [solo], ["solo"])
-    engine2.vehicles[0].x, engine2.vehicles[0].y, engine2.vehicles[0].yaw = (
-        5.0,
-        0.0,
-        0.0,
-    )
-    engine2.tick()
-    assert math.isfinite(solo.scans[0][36])
-    assert solo.scans[0][36] > expected
-
-
-def test_ghost_vehicle_is_absent_from_scan(stadium: Track, config: Config) -> None:
-    scanner = ScanRecorder(0.0)
-    engine = RaceEngine(
-        stadium, config, [scanner, StraightDriver(2.0)], ["scanner", "ghost"]
-    )
-    sc, ghost = engine.vehicles
-    sc.x, sc.y, sc.yaw = 3.0, 0.0, 0.0
-    _drive_to_ghost(engine, ghost)
-    ghost.x, ghost.y, ghost.yaw = 5.0, 0.0, 0.0
-    engine.tick()
-    scan = scanner.scans[-1]
-    # If the ghost were visible, beam 0 would read 2 - r; it reads the
-    # wall behind it instead.
-    assert scan[0] > 2.0 - config.race.collision_distance
-    assert math.isfinite(scan[0])
-
-
-def test_paused_vehicle_is_absent_from_scan(stadium: Track, config: Config) -> None:
-    scanner = ScanRecorder(0.0)
-    engine = RaceEngine(
-        stadium, config, [scanner, StraightDriver(2.0)], ["scanner", "pauser"]
-    )
-    sc, pauser = engine.vehicles
-    sc.x, sc.y, sc.yaw = 3.0, 0.0, 0.0
-    while pauser.state.status is VehicleStatus.RACING:
-        engine.tick()
-    assert pauser.state.status is VehicleStatus.PAUSED
-    pauser.x, pauser.y, pauser.yaw = 5.0, 0.0, 0.0
-    engine.tick()
-    scan = scanner.scans[-1]
-    assert scan[0] > 2.0 - config.race.collision_distance
-    assert math.isfinite(scan[0])
 
 
 def test_tick_cost_with_eight_vehicles_stays_under_budget(
@@ -261,35 +181,6 @@ def test_ghost_passes_through_wall_without_crashing(
     assert moved_through > 0.5
     assert v.state.status is VehicleStatus.PAUSED
     assert v.state.crashes == 2
-
-
-def test_racing_car_overlapping_ghost_does_not_crash(
-    stadium: Track, config: Config
-) -> None:
-    engine = RaceEngine(
-        stadium,
-        config,
-        [StraightDriver(2.0), StraightDriver(0.5)],
-        ["ghost", "racer"],
-    )
-    ghost, racer = engine.vehicles
-    # The ghost starts ahead of the racer so the two live vehicles
-    # separate instead of colliding on the shared start pose.
-    ghost.x, ghost.y, ghost.yaw = 3.0, 0.0, 0.0
-    _drive_to_ghost(engine, ghost)
-    assert ghost.state.status is VehicleStatus.GHOST
-    assert racer.state.status is VehicleStatus.RACING
-    racer.x, racer.y, racer.yaw = ghost.x, ghost.y, ghost.yaw
-    racer.speed = 0.0
-    racer.steering = 0.0
-    for _ in range(10):
-        engine.tick()
-    separation = math.hypot(racer.x - ghost.x, racer.y - ghost.y)
-    assert separation < config.race.collision_distance
-    assert ghost.state.status is VehicleStatus.GHOST
-    assert ghost.state.crashes == 1
-    assert racer.state.status is VehicleStatus.RACING
-    assert racer.state.crashes == 0
 
 
 class ShuttleDriver(Controller):
