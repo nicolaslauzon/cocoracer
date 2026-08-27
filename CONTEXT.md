@@ -36,8 +36,8 @@ against.
 _Avoid_: AI, bot, opponent, agent
 
 **Tick**:
-One fixed-rate iteration of the race loop, in which every racing controller is
-stepped exactly once.
+One fixed-rate iteration of the race loop, in which every controller that may
+be stepped (racing or ghost) is stepped exactly once.
 _Avoid_: step, frame, iteration
 
 **Laser scan**:
@@ -47,7 +47,8 @@ _Avoid_: lidar, sensor, rays
 
 **Ghost**:
 The post-crash state in which a vehicle is invisible to laser scans and cannot
-be collided with, lasting a fixed duration.
+be collided with; the controller is still stepped, and the vehicle passes
+through walls, lasting a fixed duration.
 _Avoid_: phantom, invincible, safe
 
 **Pause**:

@@ -1,10 +1,13 @@
 """Player controller contract and file loader."""
 
 import importlib.util
+import inspect
 import itertools
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+import numpy as np
 
 from cocoracer.track import Track
 
@@ -42,15 +45,30 @@ class Controller:
 
     Subclass it in a single file and implement `step`. The engine calls
     `reset` once before the first tick, then `step` once per tick (40 Hz)
-    while the vehicle is racing. One instance serves one vehicle, so
-    instance state persists between ticks.
+    while the vehicle is racing or ghosting. One instance serves one
+    vehicle, so instance state persists between ticks.
+
+    `step` also receives `laser_scan`, the full-circle scan: a numpy
+    array of beam distances in meters, one per beam. Beam 0 points
+    straight ahead (the vehicle heading); beam i is at heading +
+    i * 360 / len(laser_scan) degrees, increasing counter-clockwise. A
+    beam stops at the first obstacle — a wall, or another racing
+    vehicle (its collision circle; the scanning vehicle is never a
+    target) — and reads ``np.inf`` if it hits nothing. There is no max
+    range.
     """
 
     def reset(self, track_info: TrackInfo) -> None:
         """Called once before the first tick, to initialize internal state."""
 
     def step(
-        self, x: float, y: float, yaw: float, speed: float, steering_angle: float
+        self,
+        x: float,
+        y: float,
+        yaw: float,
+        speed: float,
+        steering_angle: float,
+        laser_scan: np.ndarray,
     ) -> tuple[float, float]:
         """Return (target_speed, target_steering_angle) for this tick."""
         raise NotImplementedError
@@ -99,6 +117,16 @@ def load_controller(path: Path | str) -> Controller:
         raise ControllerError(
             f"controller class {cls.__name__} is not concrete (it does not "
             f"override step)"
+        )
+    positional = [
+        name
+        for name, p in inspect.signature(cls.step).parameters.items()
+        if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+    ]
+    if len(positional) < 7:
+        raise ControllerError(
+            f"controller class {cls.__name__} step() must take "
+            f"(x, y, yaw, speed, steering_angle, laser_scan)"
         )
     try:
         return cls()

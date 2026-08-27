@@ -1,8 +1,8 @@
-# 06: Gap-follow baseline
+# 15: Gap-follow baseline
 
 **What to build:** The gap-follow baseline, following F1TENTH Lecture 5 semantics: over a forward cone (±60°), find the widest gap between opposing wall hits in the laser scan, steer toward the gap midpoint at a fixed lookahead, with speed = min(v_max, k_gap × gap_width) × (1 − k·|steering|). Every gain, cone angle, lookahead, and speed factor is a parameter in the param file under its own baseline block.
 
-**Blocked by:** 04 (Race mode + pure-pursuit reference)
+**Blocked by:** 09 (Pure-pursuit reference)
 
 **Status:** ready-for-agent
 

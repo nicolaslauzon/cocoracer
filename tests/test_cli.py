@@ -1,5 +1,6 @@
 """Tests for the cocoracer CLI."""
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -58,18 +59,45 @@ def test_time_trial_missing_controller_file() -> None:
         main(argv)
 
 
-def test_race_prints_not_implemented(capsys: pytest.CaptureFixture[str]) -> None:
-    argv = [
+def _race_argv(controller: str, params: Path = PARAMS) -> list[str]:
+    return [
         "--params",
-        str(PARAMS),
+        str(params),
         "race",
         "--track",
         "stadium",
         "--controller",
-        f"{STUB},{STUB}",
+        controller,
         "--no-web",
     ]
-    rc = main(argv)
+
+
+def test_race_runs_two_controllers_headless_and_prints_results(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # A short time limit ends the race fast: both stubs crash into the
+    # wall on every pass and neither finishes.
+    shutil.copytree(PARAMS.parent / "tracks", tmp_path / "tracks")
+    short = tmp_path / "params.yaml"
+    text = PARAMS.read_text().replace("time_limit: 300.0", "time_limit: 8.0")
+    assert text != PARAMS.read_text()
+    short.write_text(text)
+    rc = main(_race_argv(f"{STUB},{STUB}", short))
     out = capsys.readouterr().out
     assert rc == 0
-    assert "not implemented yet" in out
+    assert "results (stadium):" in out
+    assert "open_loop (1)" in out
+    assert "open_loop (2)" in out
+    assert "[timeout]" in out
+    assert "race time:" in out
+
+
+def test_race_rejects_single_controller() -> None:
+    with pytest.raises(SystemExit, match="two or more controllers"):
+        main(_race_argv(str(STUB)))
+
+
+def test_race_missing_controller_file() -> None:
+    argv = _race_argv(f"{STUB},{REPO_ROOT / 'nope.py'}")
+    with pytest.raises(SystemExit, match="not found"):
+        main(argv)

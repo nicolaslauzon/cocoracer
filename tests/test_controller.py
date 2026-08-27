@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from cocoracer.controller import Controller, ControllerError, load_controller
@@ -12,8 +13,16 @@ import math
 from cocoracer.controller import Controller
 
 class Pilot(Controller):
-    def step(self, x, y, yaw, speed, steering_angle):
+    def step(self, x, y, yaw, speed, steering_angle, laser_scan):
         return 1.0 + 0.1 * math.sin(x), 0.0
+"""
+
+_OLD_SIGNATURE = """
+from cocoracer.controller import Controller
+
+class OldSignature(Controller):
+    def step(self, x, y, yaw, speed, steering_angle):
+        return 1.0, 0.0
 """
 
 
@@ -28,7 +37,7 @@ def test_loads_single_concrete_controller(tmp_path: Path) -> None:
     ctl = load_controller(file)
     assert type(ctl) is not Controller
     assert isinstance(ctl, Controller)
-    speed, steer = ctl.step(0.0, 0.0, 0.0, 1.0, 0.0)
+    speed, steer = ctl.step(0.0, 0.0, 0.0, 1.0, 0.0, np.zeros(72))
     assert speed == 1.0
     assert steer == 0.0
 
@@ -49,7 +58,7 @@ def test_rejects_module_with_two_controllers(tmp_path: Path) -> None:
         tmp_path,
         "two.py",
         _GOOD
-        + "class Second(Controller):\n    def step(self, x, y, yaw, speed, steering_angle):\n        return 0.0, 0.0\n",
+        + "class Second(Controller):\n    def step(self, x, y, yaw, speed, steering_angle, laser_scan):\n        return 0.0, 0.0\n",
     )
     with pytest.raises(ControllerError, match="exactly one"):
         load_controller(file)
@@ -66,7 +75,7 @@ class NeedsArgs(Controller):
     def __init__(self, k: float) -> None:
         self.k = k
 
-    def step(self, x, y, yaw, speed, steering_angle):
+    def step(self, x, y, yaw, speed, steering_angle, laser_scan):
         return self.k, 0.0
 """,
     )
@@ -86,6 +95,12 @@ class Lazy(Controller):
 """,
     )
     with pytest.raises(ControllerError, match="not concrete"):
+        load_controller(file)
+
+
+def test_rejects_old_signature_controller(tmp_path: Path) -> None:
+    file = _write(tmp_path, "old.py", _OLD_SIGNATURE)
+    with pytest.raises(ControllerError, match="laser_scan"):
         load_controller(file)
 
 

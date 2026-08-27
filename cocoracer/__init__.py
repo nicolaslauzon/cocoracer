@@ -6,14 +6,16 @@ from cocoracer.controller import (
     load_controller,
 )
 from cocoracer.engine import (
-    DnfReason,
     RaceEngine,
     RaceResult,
+    RaceSnapshot,
     Vehicle,
     VehicleResult,
-    VehicleStatus,
+    VehicleSnapshot,
     run_race,
 )
+from cocoracer.lap_tracker import LapTracker
+from cocoracer.race_state import DnfReason, VehicleStatus
 from cocoracer.track import Track, TrackError, build_track
 
 __all__ = [
@@ -25,10 +27,13 @@ __all__ = [
     "TrackInfo",
     "load_controller",
     "DnfReason",
+    "LapTracker",
     "RaceEngine",
     "RaceResult",
+    "RaceSnapshot",
     "Vehicle",
     "VehicleResult",
+    "VehicleSnapshot",
     "VehicleStatus",
     "run_race",
     "Track",

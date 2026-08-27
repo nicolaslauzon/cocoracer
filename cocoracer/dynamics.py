@@ -1,8 +1,13 @@
 """Batched JAX kinematic bicycle dynamics.
 
-The state array is (N, 7) with columns x, y, yaw, speed, steering angle,
-target speed, target steering. One jitted call integrates every vehicle
-for one tick using RK4 substeps, with acceleration, speed, steering-angle,
+`Dynamics.step(states, commands)` is the public interface. `states` is an
+(N, 5) array with columns x, y, yaw, speed, steering; `commands` is an
+(N, 2) array with columns target speed, target steering; the result is an
+(N, 5) array in the same column order as `states`.
+
+Internally the kernel packs both into one (N, 7) array — x, y, yaw, speed,
+steering, target speed, target steering — and integrates every vehicle for
+one tick using RK4 substeps, with acceleration, speed, steering-angle,
 and steering-rate constraints from the vehicle config.
 
 Speed and steering follow their targets at the configured rates. That
@@ -133,27 +138,17 @@ def _substep(s: jnp.ndarray, p: jnp.ndarray) -> jnp.ndarray:
     )
 
 
-def pack_state(
-    x: float,
-    y: float,
-    yaw: float,
-    speed: float,
-    steer: float,
-    target_speed: float,
-    target_steer: float,
-) -> list[float]:
-    """One row of the (N, 7) state array, in column order."""
-    return [x, y, yaw, speed, steer, target_speed, target_steer]
-
-
-@partial(jax.jit, static_argnums=(2,))
+@partial(jax.jit, static_argnums=(3,))
 def _integrate_tick(
-    states: jnp.ndarray, params: jnp.ndarray, substeps: int
+    states: jnp.ndarray,
+    commands: jnp.ndarray,
+    params: jnp.ndarray,
+    substeps: int,
 ) -> jnp.ndarray:
-    s = states
+    s = jnp.concatenate([states, commands], axis=1)
     for _ in range(substeps):
         s = _substep(s, params)
-    return s
+    return s[:, :5]
 
 
 class Dynamics:
@@ -170,10 +165,18 @@ class Dynamics:
         shape must already be compiled or the mid-race tick would stall.
         """
         for n in range(1, n_vehicles + 1):
-            dummy = jnp.zeros((n, 7))
-            _integrate_tick(dummy, self._params_arr, self._substeps)
+            dummy_states = jnp.zeros((n, 5))
+            dummy_commands = jnp.zeros((n, 2))
+            _integrate_tick(
+                dummy_states, dummy_commands, self._params_arr, self._substeps
+            )
 
-    def step(self, states: np.ndarray) -> np.ndarray:
-        """Integrate all vehicles by one tick. `states` is an (N, 7) array."""
-        result = _integrate_tick(jnp.asarray(states), self._params_arr, self._substeps)
+    def step(self, states: np.ndarray, commands: np.ndarray) -> np.ndarray:
+        """Integrate all vehicles by one tick."""
+        result = _integrate_tick(
+            jnp.asarray(states),
+            jnp.asarray(commands),
+            self._params_arr,
+            self._substeps,
+        )
         return np.asarray(result)

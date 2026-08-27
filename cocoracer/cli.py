@@ -92,6 +92,20 @@ def _load_single(path: Path) -> Controller:
         raise SystemExit(str(exc)) from exc
 
 
+def _names_for(paths: list[Path]) -> list[str]:
+    stems = [path.stem for path in paths]
+    counts = {stem: stems.count(stem) for stem in set(stems)}
+    seen: dict[str, int] = {}
+    names: list[str] = []
+    for stem in stems:
+        if counts[stem] > 1:
+            seen[stem] = seen.get(stem, 0) + 1
+            names.append(f"{stem} ({seen[stem]})")
+        else:
+            names.append(stem)
+    return names
+
+
 def _print_results(result: RaceResult) -> None:
     print()
     print(f"results ({result.track_name}):")
@@ -121,15 +135,26 @@ def _run_time_trial(
     return 0
 
 
+def _run_race(
+    config: Config, track: Track, controllers: list[Path], args: argparse.Namespace
+) -> int:
+    if len(controllers) < 2:
+        raise SystemExit("race takes two or more controllers")
+    if not args.no_web:
+        print("(web view not implemented yet; running headless)")
+    instances = [_load_single(path) for path in controllers]
+    result = run_race(track, config, instances, _names_for(controllers), mode="race")
+    _print_results(result)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     config, track_name, track, controllers = _resolve(args)
     _report(config, track_name, track, controllers, args.command)
     if args.command == "time-trial":
         return _run_time_trial(config, track, controllers, args)
-    print()
-    print("head-to-head races are not implemented yet (see ticket 04)")
-    return 0
+    return _run_race(config, track, controllers, args)
 
 
 if __name__ == "__main__":

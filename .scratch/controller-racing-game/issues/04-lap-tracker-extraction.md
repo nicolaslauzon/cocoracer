@@ -1,0 +1,18 @@
+# 04: Extract LapTracker
+
+**What to build:** The lap-counting machine leaves the engine and moves into `cocoracer/lap_tracker.py`: `LapTracker(track_length, checkpoint_s)` holds the last arc length, the checkpoint-passed flag, and the current lap start time. Methods: `start(s, time)` (once at race start; the race mode re-calls it when the countdown ends), `resync(s)` (after a crash reset — the jump to the centerline must not be read as a lap), `feed(s, time) -> float | None` (the lap time, or nothing). The engine passes `track.track_length` and `track.checkpoint_s` and feeds only RACING trackers; the inline half-length is gone, and the two `_prev_s` resets are replaced by `start` / `resync`. `Vehicle` keeps one `LapTracker`. Pure move: no behaviour change.
+
+**Blocked by:** 03 (Extract RaceState) — sequencing only, both refactors touch the engine
+
+**Status:** ready-for-agent
+
+- [x] `tests/test_lap_tracker.py`: a monotone s-sequence that passes the checkpoint books a lap with the right lap time; an oscillating s-sequence across the start line without the checkpoint books no lap (no engine, no driver)
+- [x] `tracker.resync(s)` after a crash reset produces no spurious lap
+- [x] The engine uses `track.checkpoint_s`; the inline half-length is gone; the two `_prev_s` resets are replaced by `start` / `resync`
+- [x] `Vehicle` keeps one `LapTracker`; the engine feeds only RACING trackers
+- [x] No behaviour change: all existing engine seam tests stay green
+
+## Comments
+
+- 2026-08-27 — Done. New `cocoracer/lap_tracker.py` with `LapTracker(track_length, checkpoint_s)` holding the last arc length, the checkpoint-passed flag, and the lap start time; methods `start(s, time)`, `resync(s)`, `feed(s, time) -> float | None`. `Vehicle` now carries one public `tracker` field in place of the three private lap fields; `RaceEngine.__init__` builds each tracker from `track.track_length` / `track.checkpoint_s` and calls `start(s, self.time)` at the start pose, `_handle_crash` ends with `resync(s)` after the centerline reset, and `_book_laps` is now a per-vehicle `feed` + `record_lap` that skips non-RACING vehicles — the inline `half = length / 2.0` is gone. `LapTracker` is exported from `cocoracer` and added to the module-layout list in `docs/coding-style.md` (same treatment ticket 03 gave `race_state.py`). Deviations, all deliberate: (1) the original booked laps only when `is_racing` was true but still updated `_prev_s` for paused/ghost vehicles; the new engine skips feeding them entirely — observationally identical, because a paused/ghost car is stationary and `resync` already anchored `_prev_s` before `_book_laps` runs on the crash tick; (2) `resync` deliberately does not clear the checkpoint flag, matching the original, which reset only `_prev_s` — a car that passed the checkpoint before crashing still books its lap on the next real start-line crossing (pinned by `tests/test_lap_tracker.py::test_resync_after_crash_reset_books_no_spurious_lap`). `tests/test_lap_tracker.py` adds 3 tests, no engine, no driver, no track. All four checks pass (87 tests, was 84).
+- 2026-08-27 — Correction to deviation (1): it assumed a paused/ghost car is stationary, but ticket 05 makes ghosts driven. If a driven ghost that already passed the checkpoint crosses the line during the ghost phase, the new engine books the lap on the re-racing tick — the car physically completed the crossing — while the pre-04 code discarded that crossing and only booked the lap after the car passed the checkpoint again. The new behaviour is the fairer reading (the car did drive the lap), so the code stands; only this note changes.
