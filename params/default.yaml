@@ -50,10 +50,10 @@ baselines:
   pure_pursuit:
     wheelbase: 0.3302
     max_steer: 0.5
-    lookahead_slope: 0.4
-    lookahead_offset: 1.0
+    lookahead_slope: 0.10
+    lookahead_offset: 0.6
     min_lookahead: 0.5
-    max_lookahead: 15.0
+    max_lookahead: 2.5
     target_speed: 15.0
   wall_follow:
     target_wall_distance: 0.3

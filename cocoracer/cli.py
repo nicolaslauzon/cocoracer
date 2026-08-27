@@ -86,9 +86,9 @@ def _report(
         print(f"  - {path}")
 
 
-def _load_single(path: Path) -> Controller:
+def _load_single(path: Path, baselines: dict[str, dict] | None = None) -> Controller:
     try:
-        return load_controller(path)
+        return load_controller(path, baselines=baselines)
     except ControllerError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -172,7 +172,14 @@ def _run_time_trial(
 ) -> int:
     if len(controllers) != 1:
         raise SystemExit("time-trial takes exactly one controller")
-    return _run(config, track, [_load_single(controllers[0])], None, "time-trial", args)
+    return _run(
+        config,
+        track,
+        [_load_single(controllers[0], config.baselines)],
+        None,
+        "time-trial",
+        args,
+    )
 
 
 def _run_race(
@@ -180,7 +187,7 @@ def _run_race(
 ) -> int:
     if len(controllers) < 2:
         raise SystemExit("race takes two or more controllers")
-    instances = [_load_single(path) for path in controllers]
+    instances = [_load_single(path, config.baselines) for path in controllers]
     return _run(config, track, instances, _names_for(controllers), "race", args)
 
 

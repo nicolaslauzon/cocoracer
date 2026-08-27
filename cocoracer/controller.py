@@ -26,10 +26,12 @@ class TrackInfo:
     start_x: float
     start_y: float
     start_yaw: float
+    centerline: tuple[tuple[float, float], ...] = ()
 
 
 def make_track_info(track: Track) -> TrackInfo:
     x, y, yaw = track.start_pose
+    centerline = tuple((float(px), float(py)) for px, py in track.centerline[:, :2])
     return TrackInfo(
         name=track.name,
         track_length=track.track_length,
@@ -37,6 +39,7 @@ def make_track_info(track: Track) -> TrackInfo:
         start_x=x,
         start_y=y,
         start_yaw=yaw,
+        centerline=centerline,
     )
 
 
@@ -77,11 +80,16 @@ class Controller:
 _MODULE_COUNTER = itertools.count()
 
 
-def load_controller(path: Path | str) -> Controller:
+def load_controller(
+    path: Path | str, baselines: dict[str, dict] | None = None
+) -> Controller:
     """Import a player file and return an instance of its controller class.
 
-    The file must define exactly one concrete subclass of Controller; it
-    is instantiated with no arguments.
+    The file must define exactly one concrete subclass of Controller. A
+    class whose own ``__init__`` declares a ``baselines`` parameter is
+    instantiated with ``cls(baselines=baselines)`` when a baselines
+    mapping is passed in, and with no arguments otherwise; every other
+    class is instantiated with no arguments.
     """
     file = Path(path)
     if not file.is_file():
@@ -128,7 +136,10 @@ def load_controller(path: Path | str) -> Controller:
             f"controller class {cls.__name__} step() must take "
             f"(x, y, yaw, speed, steering_angle, laser_scan)"
         )
+    accepts_baselines = "baselines" in inspect.signature(cls.__init__).parameters
     try:
+        if accepts_baselines and baselines is not None:
+            return cls(baselines=baselines)  # type: ignore[call-arg]
         return cls()
     except TypeError as exc:
         raise ControllerError(
