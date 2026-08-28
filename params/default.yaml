@@ -62,9 +62,15 @@ baselines:
     v_ref: 15.0
     steer_speed_factor: 0.5
     sector_half_angle: 60.0
-  gap_follow:
-    cone_half_angle: 60.0
-    lookahead: 2.0
-    k_gap: 2.0
-    v_max: 20.0
-    steer_speed_factor: 0.5
+  disparity_extender:
+    car_width: 0.4
+    wheelbase: 0.3302
+    max_steer: 0.5
+    kp: 0.6
+    kd: 3.0
+    full_speed_distance: 5.0
+    brake_distance: 1.0
+    min_speed: 1.5
+    max_speed: 18.0
+    friction: 0.52
+    disparity_threshold: 2.0
