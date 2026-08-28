@@ -49,7 +49,7 @@ def test_time_trial_live_starts_web_view_and_runs(
     # A short time limit ends the stub's race fast in wall-clock pace.
     shutil.copytree(PARAMS.parent / "tracks", tmp_path / "tracks")
     short = tmp_path / "params.yaml"
-    text = PARAMS.read_text().replace("time_limit: 300.0", "time_limit: 4.0")
+    text = PARAMS.read_text().replace("time_limit: 600.0", "time_limit: 4.0")
     assert text != PARAMS.read_text()
     short.write_text(text)
     port = _free_port()
@@ -99,7 +99,7 @@ def test_race_runs_two_controllers_headless_and_prints_results(
     # wall on every pass and neither finishes.
     shutil.copytree(PARAMS.parent / "tracks", tmp_path / "tracks")
     short = tmp_path / "params.yaml"
-    text = PARAMS.read_text().replace("time_limit: 300.0", "time_limit: 8.0")
+    text = PARAMS.read_text().replace("time_limit: 600.0", "time_limit: 8.0")
     assert text != PARAMS.read_text()
     short.write_text(text)
     rc = main(_race_argv(f"{STUB},{STUB}", short))

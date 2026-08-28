@@ -12,7 +12,7 @@ from cocoracer.controller import Controller, TrackInfo
 
 
 class OpenLoop(Controller):
-    SPEED = 2.0
+    SPEED = 20.0
 
     def reset(self, track_info: TrackInfo) -> None:
         pass

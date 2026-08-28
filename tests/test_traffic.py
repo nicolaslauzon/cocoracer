@@ -126,17 +126,21 @@ def test_collision_in_traffic_resets_to_centerline(
 
 
 def test_ghost_cannot_be_recollided_in_traffic(stadium: Track, config: Config) -> None:
+    # The chaser sits just inside the collision distance of the phantom and
+    # well clear of the racer, so the first crash pairs only the chaser with
+    # the phantom. The racer, behind both, then drives through the parked
+    # ghosts while they hold their poses.
     engine = RaceEngine(
         stadium,
         _no_countdown(config),
-        [StraightDriver(2.0), StraightDriver(0.0), StraightDriver(2.0)],
+        [StraightDriver(5.0), StraightDriver(0.0), StraightDriver(5.0)],
         ["chaser", "phantom", "racer"],
         mode="race",
     )
     chaser, phantom, racer = engine.vehicles
-    chaser.x, chaser.y, chaser.yaw = 2.0, 0.0, 0.0
-    phantom.x, phantom.y, phantom.yaw = 4.0, 0.0, 0.0
-    racer.x, racer.y, racer.yaw = 0.0, 0.0, 0.0
+    chaser.x, chaser.y, chaser.yaw = 12.0, 0.0, 0.0
+    phantom.x, phantom.y, phantom.yaw = 14.0, 0.0, 0.0
+    racer.x, racer.y, racer.yaw = 9.0, 0.0, 0.0
     while chaser.state.is_racing or phantom.state.is_racing:
         engine.tick()
     while chaser.state.status is VehicleStatus.PAUSED:
@@ -168,21 +172,23 @@ def test_racing_visible_in_scans_ghosts_absent(stadium: Track, config: Config) -
         ["observer", "other", "third"],
     )
     observer, other, third = engine.vehicles
-    observer.x, observer.y, observer.yaw = 1.0, 0.0, 0.0
-    other.x, other.y, other.yaw = 2.0, 0.0, 0.0
-    third.x, third.y, third.yaw = 3.0, 0.0, 0.0
+    # Every vehicle sits outside its neighbours' collision circles (radius
+    # = collision distance, 2.5 m) so beam 0 sees the near side of each.
+    observer.x, observer.y, observer.yaw = 3.0, 0.0, 0.0
+    other.x, other.y, other.yaw = 9.0, 0.0, 0.0
+    third.x, third.y, third.yaw = 13.0, 0.0, 0.0
     engine.tick()
-    # Beam 0 points straight ahead: other's collision circle (radius
-    # 0.5 m, center 2.0 m ahead) is 0.5 m along it, far closer than the
-    # wall at the end of the straight.
-    assert recorder.scans[-1][0] == pytest.approx(0.5, abs=0.05)
+    # Beam 0 points straight ahead: other's collision circle (radius 2.5 m,
+    # center 9.0 m ahead) is 3.5 m along it, closer than third's circle and
+    # far closer than the wall at the end of the straight.
+    assert recorder.scans[-1][0] == pytest.approx(3.5, abs=0.05)
     # Flip the other vehicle to ghost for one tick; its timer then
     # expires on its own and the vehicle returns to racing.
     other.state.status = VehicleStatus.GHOST
     engine.tick()
     # The ghost is absent from the scan: beam 0 now sees the racing
-    # third vehicle's circle 1.5 m ahead, not the ghost at 0.5 m.
-    assert recorder.scans[-1][0] == pytest.approx(1.5, abs=0.05)
+    # third vehicle's circle 7.5 m ahead, not the ghost at 3.5 m.
+    assert recorder.scans[-1][0] == pytest.approx(7.5, abs=0.05)
 
 
 def _load_pure_pursuit(config: Config) -> Controller:

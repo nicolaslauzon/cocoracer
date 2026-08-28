@@ -160,12 +160,12 @@ class CenterlineDriver(Controller):
     """Follows the stadium centerline: zero steer on the straights, a
     steady steer through both 180-degree arcs."""
 
-    ARC_STEER = 0.16368
+    ARC_STEER = math.atan(1.65 / 40.0)
 
     def __init__(self, speed: float) -> None:
         self._speed = speed
         self._s = 0.0
-        self._length = 24.5664
+        self._length = 491.327
 
     def reset(self, track_info: TrackInfo) -> None:
         self._length = track_info.track_length
@@ -181,8 +181,8 @@ class CenterlineDriver(Controller):
     ) -> tuple[float, float]:
         self._s = (self._s + speed * 0.025) % self._length
         s = self._s
-        in_arc = (6.0 <= s < 6.0 + 2.0 * math.pi) or (
-            12.0 + 2.0 * math.pi <= s < self._length
+        in_arc = (120.0 <= s < 120.0 + 40.0 * math.pi) or (
+            240.0 + 40.0 * math.pi <= s < self._length
         )
         return self._speed, (self.ARC_STEER if in_arc else 0.0)
 
@@ -212,8 +212,8 @@ def test_live_tick_loop_matches_headless_run_race(
     stadium: Track, config: Config
 ) -> None:
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
-    headless = run_race(stadium, config, [CenterlineDriver(2.0)], ["runner"])
-    engine = RaceEngine(stadium, config, [CenterlineDriver(2.0)], ["runner"])
+    headless = run_race(stadium, config, [CenterlineDriver(20.0)], ["runner"])
+    engine = RaceEngine(stadium, config, [CenterlineDriver(20.0)], ["runner"])
     while not engine.finished:
         engine.tick()
     live = engine.results
