@@ -35,7 +35,7 @@ def make_track_info(track: Track) -> TrackInfo:
     return TrackInfo(
         name=track.name,
         track_length=track.track_length,
-        width=track.half_width * 2.0,
+        width=track.width,
         start_x=x,
         start_y=y,
         start_yaw=yaw,

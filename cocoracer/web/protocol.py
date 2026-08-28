@@ -42,7 +42,7 @@ def build_static_message(track: Track) -> str:
             "height": int(ny),
             "occupied": cells,
         },
-        "track_width": float(track.half_width * 2.0),
+        "track_width": float(track.width),
         "start_line": {"x": float(x), "y": float(y), "yaw": float(yaw)},
     }
     return json.dumps(message)

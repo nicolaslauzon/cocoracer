@@ -124,7 +124,7 @@ def _report(
     print(f"command:     {command}")
     print(f"track:       {track_name}")
     print(f"track length: {track.track_length:.3f} m")
-    print(f"track width:  {track.half_width * 2:.3f} m")
+    print(f"track width:  {track.width:.3f} m")
     print(
         f"grid:         {track.grid_shape[1]} x {track.grid_shape[0]} @ {track.resolution:.3f} m"
     )

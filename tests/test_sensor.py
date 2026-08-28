@@ -124,8 +124,8 @@ def test_scan_reads_wall_at_half_track_width(stadium: Track, config: Config) -> 
     )
     b = config.sensor.beam_count
     tol = 1.5 * stadium.resolution
-    assert scan[0, b // 4] == pytest.approx(stadium.half_width, abs=tol)
-    assert scan[0, 3 * b // 4] == pytest.approx(stadium.half_width, abs=tol)
+    assert scan[0, b // 4] == pytest.approx(stadium.width / 2.0, abs=tol)
+    assert scan[0, 3 * b // 4] == pytest.approx(stadium.width / 2.0, abs=tol)
 
 
 def test_racing_vehicle_appears_in_scan_at_correct_distance(

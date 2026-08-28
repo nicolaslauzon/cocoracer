@@ -26,7 +26,7 @@ def test_static_message_shape(stadium: Track) -> None:
     msg = json.loads(build_static_message(stadium))
     assert msg["type"] == "static"
     assert msg["track"] == stadium.name
-    assert msg["track_width"] == pytest.approx(stadium.half_width * 2.0)
+    assert msg["track_width"] == pytest.approx(stadium.width)
     line = msg["centerline"]
     assert len(line) >= 4
     assert all(isinstance(p, list) and len(p) == 2 for p in line)

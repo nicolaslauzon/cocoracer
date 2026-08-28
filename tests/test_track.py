@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy.spatial import cKDTree
 
-from cocoracer.config import Segment, TrackSpec
+from cocoracer.config import Config, Segment, TrackSpec
 from cocoracer.track import (
     Track,
     TrackError,
@@ -56,7 +56,7 @@ def test_frenet_roundtrip_lateral(stadium: Track) -> None:
     assert d2 == pytest.approx(d, abs=5e-3)
 
 
-def test_grid_marks_exactly_beyond_half_width(stadium: Track) -> None:
+def test_stadium_grid_matches_wall_band(stadium: Track) -> None:
     ox, oy = stadium.grid_origin
     ny, nx = stadium.grid_shape
     cx = ox + (np.arange(nx) + 0.5) * stadium.resolution
@@ -64,8 +64,30 @@ def test_grid_marks_exactly_beyond_half_width(stadium: Track) -> None:
     gx, gy = np.meshgrid(cx, cy, indexing="xy")
     tree = cKDTree(stadium.centerline[:, :2])
     dist, _ = tree.query(np.column_stack([gx.ravel(), gy.ravel()]))
-    expected = dist.reshape(ny, nx) > stadium.half_width
+    expected = dist.reshape(ny, nx) > stadium.width / 2.0
     assert np.array_equal(stadium.occupied, expected)
+
+
+def test_stadium_grid_cells_are_0_3_m(stadium: Track) -> None:
+    assert stadium.resolution == pytest.approx(0.3)
+
+
+def test_stadium_walls_closed_and_offset_from_centerline(stadium: Track) -> None:
+    cl = stadium.centerline[:, :2]
+    tangent = np.column_stack(
+        [np.cos(stadium.centerline[:, 2]), np.sin(stadium.centerline[:, 2])]
+    )
+    for wall, side in ((stadium.left_wall, 1.0), (stadium.right_wall, -1.0)):
+        assert wall.shape == (len(cl), 2)
+        assert np.allclose(wall[0], wall[-1])
+        off = wall - cl
+        assert np.allclose(np.linalg.norm(off, axis=1), stadium.width / 2.0, atol=1e-6)
+        cross = tangent[:, 0] * off[:, 1] - tangent[:, 1] * off[:, 0]
+        assert np.all(np.sign(cross) == side)
+
+
+def test_stadium_reported_width_is_configured(stadium: Track, config: Config) -> None:
+    assert stadium.width == pytest.approx(config.tracks["stadium"].width)
 
 
 def test_closure_rejects_bad_turn_sum() -> None:
@@ -158,7 +180,7 @@ def test_f1_track_frenet_roundtrip_lateral(
 
 
 @pytest.mark.parametrize("name", F1_TRACKS)
-def test_f1_track_grid_matches_half_width(
+def test_f1_track_grid_matches_wall_band(
     name: str, f1_tracks: dict[str, Track]
 ) -> None:
     track = f1_tracks[name]
@@ -169,8 +191,15 @@ def test_f1_track_grid_matches_half_width(
     gx, gy = np.meshgrid(cx, cy, indexing="xy")
     tree = cKDTree(track.centerline[:, :2])
     dist, _ = tree.query(np.column_stack([gx.ravel(), gy.ravel()]))
-    expected = dist.reshape(ny, nx) > track.half_width
+    expected = dist.reshape(ny, nx) > track.width / 2.0
     assert np.array_equal(track.occupied, expected)
+
+
+@pytest.mark.parametrize("name", F1_TRACKS)
+def test_f1_track_reported_width_is_configured(
+    name: str, f1_tracks: dict[str, Track]
+) -> None:
+    assert f1_tracks[name].width == pytest.approx(1.0, abs=1e-9)
 
 
 def test_beam_distances_read_known_wall(
@@ -232,17 +261,86 @@ def test_beam_distances_multiple_vehicles_in_one_call(
     assert scan[1, 36] == pytest.approx(1.1, abs=0.15)
 
 
-def test_centerline_builds_closed_ring() -> None:
+def _rect_points() -> list[tuple[float, float]]:
     pts = [(float(x), 0.0) for x in np.arange(0.0, 10.1, 0.5)]
     pts += [(10.0, float(y)) for y in np.arange(0.5, 4.5, 0.5)]
     pts += [(float(x), 4.0) for x in np.arange(9.5, -0.01, -0.5)]
     pts += [(0.0, float(y)) for y in np.arange(3.5, -0.01, -0.5)]
     pts.append((0.0, 0.0))
-    spec = TrackSpec(name="rect", width=1.0, resolution=0.05, centerline=pts)
+    return pts
+
+
+def test_centerline_builds_closed_ring() -> None:
+    spec = TrackSpec(name="rect", width=1.0, resolution=0.05, centerline=_rect_points())
     track = build_track(spec)
     assert track.track_length == pytest.approx(28.0, rel=0.01)
     x, y, _ = track.start_pose
     assert not track.point_in_wall(x, y)
+
+
+def test_centerline_track_walls_closed_and_width_configured() -> None:
+    spec = TrackSpec(name="rect", width=1.0, resolution=0.05, centerline=_rect_points())
+    track = build_track(spec)
+    cl = track.centerline[:, :2]
+    for wall in (track.left_wall, track.right_wall):
+        assert wall.shape == (len(cl), 2)
+        assert np.allclose(wall[0], wall[-1])
+    assert track.width == pytest.approx(1.0, abs=0.05)
+
+
+def _explicit_wall_track() -> tuple[TrackSpec, tuple[np.ndarray, np.ndarray]]:
+    spec = TrackSpec(
+        name="explicit", width=1.0, resolution=0.05, centerline=_rect_points()
+    )
+    # CCW ring: the inner boundary sits on the left, the outer on the right.
+    left_wall = _rect_ring(0.5, 0.5, 9.5, 3.5, 0.1)
+    right_wall = _rect_ring(-0.5, -0.5, 10.5, 4.5, 0.1)
+    return spec, (left_wall, right_wall)
+
+
+def test_explicit_walls_and_grid_pass_through() -> None:
+    spec, walls = _explicit_wall_track()
+    grid = ((-1.0, -1.0), (120, 60), np.zeros((120, 60), dtype=bool))
+    track = build_track(spec, walls=walls, grid=grid)
+    left_wall, right_wall = walls
+    assert np.array_equal(track.left_wall, left_wall)
+    assert np.array_equal(track.right_wall, right_wall)
+    assert np.array_equal(track.occupied, grid[2])
+    assert track.grid_origin == grid[0]
+    assert track.grid_shape == grid[1]
+    # The ring is 1.0 m wide on the straights, so the median wall-to-wall
+    # distance is 1.0 (corner samples sit slightly wider and are outvoted).
+    assert track.width == pytest.approx(1.0, abs=0.01)
+
+
+def test_explicit_walls_require_explicit_grid() -> None:
+    spec, walls = _explicit_wall_track()
+    with pytest.raises(TrackError, match="explicit grid"):
+        build_track(spec, walls=walls)
+
+
+def test_explicit_walls_must_close() -> None:
+    spec, (_, right_wall) = _explicit_wall_track()
+    grid = ((-1.0, -1.0), (120, 60), np.zeros((120, 60), dtype=bool))
+    open_wall = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])
+    with pytest.raises(TrackError, match="does not close"):
+        build_track(spec, walls=(open_wall, right_wall), grid=grid)
+
+
+def _rect_ring(x0: float, y0: float, x1: float, y1: float, step: float) -> np.ndarray:
+    xb = np.arange(x0, x1 + step / 2, step)
+    yt = np.arange(x1, x0 - step / 2, -step)
+    yb = np.arange(y0, y1 + step / 2, step)
+    yl = np.arange(y1, y0 - step / 2, -step)
+    ring = np.vstack(
+        [
+            np.column_stack([xb, np.full_like(xb, y0)]),
+            np.column_stack([np.full_like(yb, x1), yb]),
+            np.column_stack([yt, np.full_like(yt, y1)]),
+            np.column_stack([np.full_like(yl, x0), yl]),
+        ]
+    )
+    return np.vstack([ring, ring[:1]])
 
 
 def test_centerline_rejects_open_ring() -> None:
