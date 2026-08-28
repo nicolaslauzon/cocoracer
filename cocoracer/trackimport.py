@@ -10,6 +10,13 @@ from typing import Any
 import numpy as np
 from scipy.spatial import cKDTree
 
+from cocoracer.track import (
+    STRAIGHT_MAX_TURN_DEG,
+    TrackError,
+    _segment_turns,
+)
+from cocoracer.track import rotate_to_straightest_start as _rotate_to_straightest_start
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GEOJSON_PATH = REPO_ROOT / "data" / "f1-circuits-geodata.geojson"
 TRACKS_OUT_DIR = REPO_ROOT / "params" / "tracks"
@@ -25,7 +32,6 @@ EARTH_RADIUS_M = 6_371_000.0
 MIN_CORNER_RADIUS_M = 0.7
 RESAMPLE_SPACING_M = 0.25
 RING_ADJACENCY = 8
-STRAIGHT_MAX_TURN_DEG = 1.0
 
 
 class TrackImportError(ValueError):
@@ -75,16 +81,6 @@ def ring_length(points: np.ndarray) -> float:
 def max_turn_angle(points: np.ndarray) -> float:
     """Largest per-vertex turn angle (radians) of a closed ring."""
     return float(_segment_turns(_body(points)).max())
-
-
-def _segment_turns(body: np.ndarray) -> np.ndarray:
-    nxt = np.roll(body, -1, axis=0)
-    prv = np.roll(body, 1, axis=0)
-    d1 = np.arctan2(body[:, 1] - prv[:, 1], body[:, 0] - prv[:, 0])
-    d2 = np.arctan2(nxt[:, 1] - body[:, 1], nxt[:, 0] - body[:, 0])
-    delta = d2 - d1
-    turns: np.ndarray = np.abs(np.arctan2(np.sin(delta), np.cos(delta)))
-    return turns
 
 
 def chaikin(points: np.ndarray, iterations: int = 2) -> np.ndarray:
@@ -160,34 +156,11 @@ def near_self_intersection(points: np.ndarray, min_dist: float) -> bool:
 def rotate_to_straightest_start(
     points: np.ndarray, max_turn_deg: float = STRAIGHT_MAX_TURN_DEG
 ) -> np.ndarray:
-    """Rotate a closed ring so index 0 sits mid-way on its longest straight.
-
-    The ring must be uniformly spaced (the per-vertex turn budget is a
-    curvature measure only at a known spacing). A straight is a run of
-    vertices whose turn angle is below `max_turn_deg`. Raises
-    TrackImportError when no run of at least three segments exists.
-    """
-    body = _body(points)
-    n = len(body)
-    ok = _segment_turns(body) < math.radians(max_turn_deg)
-    best_start, best_len = 0, 0
-    run_start, run_len = 0, 0
-    for i in range(2 * n):
-        if ok[i % n]:
-            if run_len == 0:
-                run_start = i
-            run_len += 1
-            if 0 < run_len <= n and run_len > best_len:
-                best_start, best_len = run_start, run_len
-        else:
-            run_len = 0
-    if best_len < 3:
-        raise TrackImportError(
-            "no straight run of 3+ segments; cannot place start line"
-        )
-    start = (best_start + best_len // 2) % n
-    rotated = np.roll(body, -start, axis=0)
-    return np.vstack([rotated, rotated[:1]])
+    """Rotate a ring to its longest straight; see cocoracer.track."""
+    try:
+        return _rotate_to_straightest_start(points, max_turn_deg)
+    except TrackError as exc:
+        raise TrackImportError(str(exc)) from exc
 
 
 def import_track(

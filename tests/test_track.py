@@ -6,7 +6,12 @@ import pytest
 from scipy.spatial import cKDTree
 
 from cocoracer.config import Segment, TrackSpec
-from cocoracer.track import Track, TrackError, build_track
+from cocoracer.track import (
+    Track,
+    TrackError,
+    build_track,
+    rotate_to_straightest_start,
+)
 
 F1_TRACKS = ("montreal", "spa", "silverstone")
 F1_OFFICIAL_LENGTH_M = {"montreal": 4361.0, "spa": 7004.0, "silverstone": 5891.0}
@@ -259,3 +264,42 @@ def test_build_track_without_layout() -> None:
     spec = TrackSpec(name="empty", width=1.0, resolution=0.1)
     with pytest.raises(TrackError, match="no layout"):
         build_track(spec)
+
+
+def _circle_ring(r: float, n: int) -> np.ndarray:
+    t = np.linspace(0.0, 2.0 * np.pi, n, endpoint=False)
+    body = np.column_stack([r * np.cos(t), r * np.sin(t)])
+    return np.vstack([body, body[:1]])
+
+
+def _d_ring() -> np.ndarray:
+    pts: list[list[float]] = []
+    for i in range(25):
+        pts.append([0.5 * i, 0.0])
+    for i in range(1, 36):
+        t = math.pi * i / 36
+        pts.append([6.0 + 6.0 * math.cos(t), 6.0 * math.sin(t)])
+    body = np.asarray(pts, dtype=np.float64)
+    return np.vstack([body, body[:1]])
+
+
+def test_rotate_start_lands_mid_longest_straight() -> None:
+    out = rotate_to_straightest_start(_d_ring())
+    assert np.allclose(out[0], out[-1])
+    assert out[0] == pytest.approx([6.0, 0.0], abs=1e-9)
+    assert abs(out[1, 1]) < 1e-9
+    assert abs(out[2, 1]) < 1e-9
+
+
+def test_rotate_start_requires_straight() -> None:
+    with pytest.raises(TrackError):
+        rotate_to_straightest_start(_circle_ring(10.0, 60))
+
+
+def test_rotate_start_threshold_is_parameterized() -> None:
+    ring = _circle_ring(10.0, 60)  # 6 degrees of turn per vertex
+    with pytest.raises(TrackError):
+        rotate_to_straightest_start(ring)
+    out = rotate_to_straightest_start(ring, max_turn_deg=7.0)
+    assert np.allclose(out[0], out[-1])
+    assert len(out) == len(ring)
