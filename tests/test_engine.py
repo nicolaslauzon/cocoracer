@@ -458,6 +458,78 @@ def test_engine_rejects_unknown_mode(stadium: Track, config: Config) -> None:
         RaceEngine(stadium, config, [StraightDriver(2.0)], ["x"], mode="duel")
 
 
+def test_engine_without_auto_start_is_waiting(stadium: Track, config: Config) -> None:
+    engine = RaceEngine(stadium, config, [StepCounter(2.0)], ["idle"], auto_start=False)
+    assert engine.phase == "waiting"
+    assert engine.time == 0.0
+
+
+def test_ticks_while_waiting_advance_nothing(stadium: Track, config: Config) -> None:
+    first = StepCounter(2.0)
+    engine = RaceEngine(
+        stadium, config, [first], ["idle"], mode="race", auto_start=False
+    )
+    v = engine.vehicles[0]
+    pose = (v.x, v.y, v.yaw)
+    for _ in range(10):
+        engine.tick()
+    assert engine.time == 0.0
+    assert (v.x, v.y, v.yaw) == pose
+    assert v.speed == 0.0
+    assert v.state.status is VehicleStatus.RACING
+    assert first.steps == 0
+    assert engine.countdown == pytest.approx(config.race.countdown, abs=1e-9)
+
+
+def test_start_begins_countdown_in_race_mode(stadium: Track, config: Config) -> None:
+    first = StepCounter(2.0)
+    engine = RaceEngine(
+        stadium, config, [first], ["idle"], mode="race", auto_start=False
+    )
+    engine.start()
+    assert engine.phase == "countdown"
+    countdown_ticks = int(round(config.race.countdown / config.sim.tick_dt))
+    for _ in range(countdown_ticks):
+        engine.tick()
+    assert engine.phase == "racing"
+    assert first.steps == 0
+    engine.tick()
+    assert first.steps == 1
+
+
+def test_start_releases_immediately_in_time_trial(
+    stadium: Track, config: Config
+) -> None:
+    first = StepCounter(2.0)
+    engine = RaceEngine(stadium, config, [first], ["idle"], auto_start=False)
+    assert engine.phase == "waiting"
+    engine.start()
+    assert engine.phase == "racing"
+    engine.tick()
+    assert first.steps == 1
+    assert engine.time == pytest.approx(config.sim.tick_dt, abs=1e-9)
+
+
+def test_auto_start_default_skips_waiting(stadium: Track, config: Config) -> None:
+    trial = RaceEngine(stadium, config, [StraightDriver(2.0)], ["tt"])
+    assert trial.phase == "racing"
+    race = RaceEngine(stadium, config, [StraightDriver(2.0)], ["rr"], mode="race")
+    assert race.phase == "countdown"
+    assert race.countdown == pytest.approx(config.race.countdown, abs=1e-9)
+
+
+def test_run_releases_a_waiting_engine(stadium: Track, config: Config) -> None:
+    config = dataclasses.replace(
+        config, race=dataclasses.replace(config.race, time_limit=1.0)
+    )
+    engine = RaceEngine(
+        stadium, config, [StraightDriver(0.0)], ["sitter"], auto_start=False
+    )
+    result = engine.run()
+    assert result.results[0].dnf_reason is DnfReason.TIMEOUT
+    assert 1.0 <= result.time < 1.05
+
+
 def test_race_mode_starts_on_staggered_grid(stadium: Track, config: Config) -> None:
     drivers: list[Controller] = [StepCounter(2.0) for _ in range(3)]
     engine = RaceEngine(stadium, config, drivers, ["a", "b", "c"], mode="race")
