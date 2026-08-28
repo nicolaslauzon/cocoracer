@@ -15,7 +15,8 @@ most once, ghosts and paused vehicles can neither hit nor be hit)
 and the crashed vehicles are reset to the nearest centerline pose
 with the pause or DNF registered, laps are booked behind the
 start/finish line plus mid-track checkpoint, and the race timeout is
-checked.
+checked. An engine built with auto_start=False sits in the waiting
+phase with the clock frozen until start() releases the field.
 """
 
 from dataclasses import dataclass
@@ -99,6 +100,7 @@ class RaceEngine:
         controllers: list[Controller],
         names: list[str] | None = None,
         mode: str = "time-trial",
+        auto_start: bool = True,
     ) -> None:
         if mode not in _MODES:
             raise ValueError(f"mode must be one of {_MODES}, got {mode!r}")
@@ -124,6 +126,7 @@ class RaceEngine:
         self._countdown_left = (
             int(round(config.race.countdown / self._dt)) if mode == "race" else 0
         )
+        self._waiting = not auto_start
         poses = [
             self._grid_pose(i) if mode == "race" else track.start_pose
             for i in range(len(controllers))
@@ -176,7 +179,9 @@ class RaceEngine:
 
     @property
     def phase(self) -> str:
-        """Race phase: "countdown", "racing", or "finished"."""
+        """Race phase: "waiting", "countdown", "racing", or "finished"."""
+        if self._waiting:
+            return "waiting"
         if self._countdown_left > 0:
             return "countdown"
         return "racing" if not self.finished else "finished"
@@ -196,8 +201,14 @@ class RaceEngine:
         """The race results, ranked; valid once the race is finished."""
         return self._results()
 
+    def start(self) -> None:
+        """Release the waiting field: countdown or immediate racing."""
+        self._waiting = False
+
     def tick(self) -> None:
-        """Advance the race by one tick (1/40 s)."""
+        """Advance the race by one tick (1/40 s); a no-op while waiting."""
+        if self._waiting:
+            return
         self.time += self._dt
         if self._countdown_left > 0:
             self._countdown_left -= 1
@@ -213,6 +224,7 @@ class RaceEngine:
 
     def run(self) -> RaceResult:
         """Run the race to completion and return the results."""
+        self.start()
         while not self.finished:
             self.tick()
         return self.results
