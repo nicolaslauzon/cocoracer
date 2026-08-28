@@ -5,10 +5,10 @@ simulation:
   physics_substeps: 4
 
 vehicle:
-  lf: 0.15875
-  lr: 0.17145
-  length: 0.5
-  width: 0.4
+  lf: 0.79
+  lr: 0.86
+  length: 2.5
+  width: 2.0
   max_speed: 25.0
   min_speed: 0.0
   max_accel: 8.0
@@ -22,23 +22,23 @@ sensor:
 
 race:
   laps: 3
-  time_limit: 300.0
+  time_limit: 600.0
   crash_pause: 0.5
   ghost_duration: 1.5
-  collision_distance: 0.5
+  collision_distance: 2.5
   max_crashes: 5
   countdown: 3.0
-  grid_spacing: 1.5
+  grid_spacing: 3.75
 
 tracks:
   stadium:
-    width: 1.0
-    resolution: 0.05
+    width: 20.0
+    resolution: 0.3
     segments:
-      - { type: straight, length: 6.0 }
-      - { type: turn, radius: 2.0, angle: 180.0 }
-      - { type: straight, length: 6.0 }
-      - { type: turn, radius: 2.0, angle: 180.0 }
+      - { type: straight, length: 120.0 }
+      - { type: turn, radius: 40.0, angle: 180.0 }
+      - { type: straight, length: 120.0 }
+      - { type: turn, radius: 40.0, angle: 180.0 }
   montreal:
     file: tracks/montreal.json
   spa:
@@ -48,29 +48,29 @@ tracks:
 
 baselines:
   pure_pursuit:
-    wheelbase: 0.3302
+    wheelbase: 1.65
     max_steer: 0.5
     lookahead_slope: 0.10
-    lookahead_offset: 0.6
-    min_lookahead: 0.5
-    max_lookahead: 2.5
+    lookahead_offset: 12.0
+    min_lookahead: 10.0
+    max_lookahead: 50.0
     target_speed: 15.0
   wall_follow:
-    target_wall_distance: 0.3
+    target_wall_distance: 6.0
     kp: 0.45
     kd: 2.0
     v_ref: 4.0
     steer_speed_factor: 0.5
     sector_half_angle: 60.0
   disparity_extender:
-    car_width: 0.4
-    wheelbase: 0.3302
+    car_width: 2.0
+    wheelbase: 1.65
     max_steer: 0.5
-    kp: 0.6
-    kd: 3.0
-    full_speed_distance: 5.0
-    brake_distance: 1.0
+    kp: 1.0
+    kd: 0.4
+    full_speed_distance: 100.0
+    brake_distance: 20.0
     min_speed: 1.5
     max_speed: 18.0
     friction: 0.52
-    disparity_threshold: 2.0
+    disparity_threshold: 40.0

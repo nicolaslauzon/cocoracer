@@ -21,7 +21,7 @@ def test_starter_loads_without_baselines(config: Config, stadium: Track) -> None
     ctl.reset(make_track_info(stadium))
     speed, steering = ctl.step(0.0, 0.0, 0.0, 1.0, 0.0, np.full(72, np.inf))
     # No walls anywhere: cruise at full speed, no turn.
-    assert speed == pytest.approx(3.0)
+    assert speed == pytest.approx(12.0)
     assert steering == pytest.approx(0.0)
 
 

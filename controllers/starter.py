@@ -83,11 +83,11 @@ class MyCar(Controller):
     """
 
     # Tuning knobs -- edit freely. Both stay inside the vehicle limits.
-    CRUISE_SPEED = 3.0  # m/s (limit 25.0)
+    CRUISE_SPEED = 12.0  # m/s (limit 25.0)
     MAX_STEER = 0.45  # rad (limit 0.5)
     WATCH_BEAMS = 14  # watch 70 deg either side of straight ahead
-    CENTER_GAIN = 0.25  # m of off-center that commands full lock
-    SLOW_DOWN_AT = 1.5  # m: start easing off when a wall is this close ahead
+    CENTER_GAIN = 5.0  # m of off-center that commands full lock
+    SLOW_DOWN_AT = 30.0  # m: start easing off when a wall is this close ahead
 
     def reset(self, track_info: TrackInfo) -> None:
         # Initialize any internal state here, once before the first tick.
@@ -130,6 +130,6 @@ class MyCar(Controller):
         d_ahead = float(scan[0])
         if math.isfinite(d_ahead) and d_ahead < self.SLOW_DOWN_AT:
             target_speed = (
-                self.CRUISE_SPEED * max(0.0, d_ahead - 0.4) / (self.SLOW_DOWN_AT - 0.4)
+                self.CRUISE_SPEED * max(0.0, d_ahead - 8.0) / (self.SLOW_DOWN_AT - 8.0)
             )
         return float(target_speed), steer

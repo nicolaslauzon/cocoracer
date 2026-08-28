@@ -29,17 +29,17 @@ class SimConfig:
 
 @dataclass
 class VehicleConfig:
-    lf: float = 0.15875
-    lr: float = 0.17145
-    length: float = 0.5
-    width: float = 0.4
-    max_speed: float = 10.0
+    lf: float = 0.79
+    lr: float = 0.86
+    length: float = 2.5
+    width: float = 2.0
+    max_speed: float = 25.0
     min_speed: float = 0.0
-    max_accel: float = 3.0
+    max_accel: float = 8.0
     max_steer: float = 0.5
     min_steer: float = -0.5
-    max_steer_rate: float = 3.0
-    min_steer_rate: float = -3.0
+    max_steer_rate: float = 4.0
+    min_steer_rate: float = -4.0
 
     @property
     def wheelbase(self) -> float:
@@ -58,13 +58,13 @@ class SensorConfig:
 @dataclass
 class RaceConfig:
     laps: int = 3
-    time_limit: float = 300.0
+    time_limit: float = 600.0
     crash_pause: float = 0.5
     ghost_duration: float = 1.5
-    collision_distance: float = 0.5
+    collision_distance: float = 2.5
     max_crashes: int = 5
     countdown: float = 3.0
-    grid_spacing: float = 1.5
+    grid_spacing: float = 3.75
 
 
 @dataclass
@@ -195,13 +195,13 @@ def load_config(path: Path | str) -> Config:
     race_raw = raw.get("race", {})
     race = RaceConfig(
         laps=int(race_raw.get("laps", 3)),
-        time_limit=float(race_raw.get("time_limit", 300.0)),
+        time_limit=float(race_raw.get("time_limit", 600.0)),
         crash_pause=float(race_raw.get("crash_pause", 0.5)),
         ghost_duration=float(race_raw.get("ghost_duration", 1.5)),
-        collision_distance=float(race_raw.get("collision_distance", 0.5)),
+        collision_distance=float(race_raw.get("collision_distance", 2.5)),
         max_crashes=int(race_raw.get("max_crashes", 5)),
         countdown=float(race_raw.get("countdown", 3.0)),
-        grid_spacing=float(race_raw.get("grid_spacing", 1.5)),
+        grid_spacing=float(race_raw.get("grid_spacing", 3.75)),
     )
 
     tracks_raw = _require(raw, "tracks", "root")
@@ -228,15 +228,15 @@ def load_config(path: Path | str) -> Config:
 
 def _vehicle_from(data: dict) -> VehicleConfig:
     return VehicleConfig(
-        lf=float(data.get("lf", 0.15875)),
-        lr=float(data.get("lr", 0.17145)),
-        length=float(data.get("length", 0.5)),
-        width=float(data.get("width", 0.4)),
-        max_speed=float(data.get("max_speed", 10.0)),
+        lf=float(data.get("lf", 0.79)),
+        lr=float(data.get("lr", 0.86)),
+        length=float(data.get("length", 2.5)),
+        width=float(data.get("width", 2.0)),
+        max_speed=float(data.get("max_speed", 25.0)),
         min_speed=float(data.get("min_speed", 0.0)),
-        max_accel=float(data.get("max_accel", 3.0)),
+        max_accel=float(data.get("max_accel", 8.0)),
         max_steer=float(data.get("max_steer", 0.5)),
         min_steer=float(data.get("min_steer", -0.5)),
-        max_steer_rate=float(data.get("max_steer_rate", 3.0)),
-        min_steer_rate=float(data.get("min_steer_rate", -3.0)),
+        max_steer_rate=float(data.get("max_steer_rate", 4.0)),
+        min_steer_rate=float(data.get("min_steer_rate", -4.0)),
     )

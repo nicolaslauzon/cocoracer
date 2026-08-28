@@ -132,16 +132,17 @@ def test_racing_vehicle_appears_in_scan_at_correct_distance(
     stadium: Track, config: Config
 ) -> None:
     scanner = _vehicle(stadium, 3.0, 0.0)
-    target = _vehicle(stadium, 5.0, 0.0)
+    target = _vehicle(stadium, 9.0, 0.0)
     scans = fleet_scan(
         stadium,
         [scanner, target],
         config.sensor.beam_angles,
         config.race.collision_distance,
     )
-    # 2 m apart, so the beam aimed at the other reads the collision circle
-    # at 2 - r, well before the wall.
-    expected = 2.0 - config.race.collision_distance
+    # 6 m apart (more than the collision radius), so each beam aimed at the
+    # other reads the near side of the collision circle at 6 - r, well
+    # before the wall.
+    expected = 6.0 - config.race.collision_distance
     assert scans[0, 0] == pytest.approx(expected, abs=1e-6)
     assert scans[1, 36] == pytest.approx(expected, abs=1e-6)
 
@@ -153,35 +154,38 @@ def test_vehicle_never_sees_itself(stadium: Track, config: Config) -> None:
         config.sensor.beam_angles,
         config.race.collision_distance,
     )
-    # With no other vehicle, the backward beam reads the wall past 5.0
-    # instead of the vehicle's own collision circle at 2 - r.
+    # With no other vehicle, the backward beam reads the wall well behind
+    # the vehicle instead of the vehicle's own collision circle, whose far
+    # side sits one radius (the collision distance) back from its center.
     assert math.isfinite(scan[0, 36])
-    assert scan[0, 36] > 2.0 - config.race.collision_distance
+    assert scan[0, 36] > config.race.collision_distance
 
 
 def test_ghost_vehicle_is_absent_from_scan(stadium: Track, config: Config) -> None:
     scanner = _vehicle(stadium, 3.0, 0.0)
-    ghost = _vehicle(stadium, 5.0, 0.0, status=VehicleStatus.GHOST)
+    ghost = _vehicle(stadium, 9.0, 0.0, status=VehicleStatus.GHOST)
     scans = fleet_scan(
         stadium,
         [scanner, ghost],
         config.sensor.beam_angles,
         config.race.collision_distance,
     )
-    # If the ghost were visible, beam 0 would read 2 - r; it reads the wall
-    # past the ghost instead.
-    assert scans[0, 0] > 2.0 - config.race.collision_distance
+    # If the ghost were visible, beam 0 would read the near side of its
+    # collision circle at 6 - r; it reads the wall past the ghost instead.
+    assert scans[0, 0] > 6.0 - config.race.collision_distance
     assert math.isfinite(scans[0, 0])
 
 
 def test_paused_vehicle_is_absent_from_scan(stadium: Track, config: Config) -> None:
     scanner = _vehicle(stadium, 3.0, 0.0)
-    pauser = _vehicle(stadium, 5.0, 0.0, status=VehicleStatus.PAUSED)
+    pauser = _vehicle(stadium, 9.0, 0.0, status=VehicleStatus.PAUSED)
     scans = fleet_scan(
         stadium,
         [scanner, pauser],
         config.sensor.beam_angles,
         config.race.collision_distance,
     )
-    assert scans[0, 0] > 2.0 - config.race.collision_distance
+    # A paused vehicle is invisible: beam 0 reads the wall past it, not the
+    # near side of its collision circle at 6 - r.
+    assert scans[0, 0] > 6.0 - config.race.collision_distance
     assert math.isfinite(scans[0, 0])

@@ -44,9 +44,9 @@ def test_steers_toward_nearest_wall(config: Config, stadium: Track) -> None:
     ctl = load_controller(WALL_FOLLOW, baselines=config.baselines)
     ctl.reset(make_track_info(stadium))
     left_wall = np.full(72, np.inf)
-    left_wall[3] = 2.0
+    left_wall[3] = 40.0
     right_wall = np.full(72, np.inf)
-    right_wall[69] = 2.0
+    right_wall[69] = 40.0
     _, steer_left = ctl.step(0.0, 0.0, 0.0, 1.0, 0.0, left_wall)
     _, steer_right = ctl.step(0.0, 0.0, 0.0, 1.0, 0.0, right_wall)
     assert steer_left > 0.0

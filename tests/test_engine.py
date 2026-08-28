@@ -74,11 +74,11 @@ class ScanRecorder(Controller):
 def test_scan_arrives_every_tick_while_steppable(
     stadium: Track, config: Config
 ) -> None:
-    recorder = ScanRecorder(2.0)
+    recorder = ScanRecorder(25.0)
     engine = RaceEngine(stadium, config, [recorder], ["scanner"])
     v = engine.vehicles[0]
     statuses: list[VehicleStatus] = []
-    for _ in range(300):
+    for _ in range(600):
         if v.state.may_step:
             statuses.append(v.state.status)
         engine.tick()
@@ -112,7 +112,7 @@ def test_tick_cost_with_eight_vehicles_stays_under_budget(
 def test_crash_resets_to_centerline_then_pause_and_ghost(
     stadium: Track, config: Config
 ) -> None:
-    engine = RaceEngine(stadium, config, [StraightDriver(2.0)], ["crasher"])
+    engine = RaceEngine(stadium, config, [StraightDriver(25.0)], ["crasher"])
     v = engine.vehicles[0]
     while v.state.status is VehicleStatus.RACING:
         engine.tick()
@@ -124,6 +124,7 @@ def test_crash_resets_to_centerline_then_pause_and_ghost(
     assert v.target_steering == 0.0
     _, lateral, _ = stadium.to_frenet(v.x, v.y, v.yaw)
     assert abs(lateral) < 1e-4
+    _reposition_to_wall(v)
     statuses: list[VehicleStatus] = []
     for _ in range(81):
         engine.tick()
@@ -144,7 +145,7 @@ def _drive_to_ghost(engine: RaceEngine, vehicle: Vehicle) -> None:
 
 
 def test_ghost_keeps_driving_during_ghost_phase(stadium: Track, config: Config) -> None:
-    engine = RaceEngine(stadium, config, [StraightDriver(2.0)], ["ghost"])
+    engine = RaceEngine(stadium, config, [StraightDriver(25.0)], ["ghost"])
     v = engine.vehicles[0]
     _drive_to_ghost(engine, v)
     assert v.state.status is VehicleStatus.GHOST
@@ -161,10 +162,11 @@ def test_ghost_keeps_driving_during_ghost_phase(stadium: Track, config: Config) 
 def test_ghost_passes_through_wall_without_crashing(
     stadium: Track, config: Config
 ) -> None:
-    engine = RaceEngine(stadium, config, [StraightDriver(2.0)], ["ghost"])
+    engine = RaceEngine(stadium, config, [StraightDriver(25.0)], ["ghost"])
     v = engine.vehicles[0]
     _drive_to_ghost(engine, v)
     assert v.state.status is VehicleStatus.GHOST
+    _reposition_to_wall(v)
     entered_wall: tuple[float, float] | None = None
     moved_through = 0.0
     while v.state.status is VehicleStatus.GHOST:
@@ -241,20 +243,21 @@ def test_oscillation_across_start_line_books_no_lap(
 
 class StadiumDriver(Controller):
     """Follows the stadium centerline: straight at zero steering, steady
-    turn steering (radius 2.0, wheelbase 0.3302) in both 180-degree arcs.
+    turn steering (radius 40.0, wheelbase 1.65) in both 180-degree arcs.
 
     `s0` is the arc length the car starts at, so the driver's internal
     position stays aligned when the engine releases it from a grid pose
     behind the start line.
     """
 
-    ARC_STEER = 0.16368
+    ARC_STEER = math.atan(1.65 / 40.0)
+    _ARC = 40.0 * math.pi
 
     def __init__(self, speed: float, s0: float = 0.0) -> None:
         self._speed = speed
         self._s0 = s0
         self._s = 0.0
-        self._length = 24.5664
+        self._length = 491.327
 
     def reset(self, track_info: TrackInfo) -> None:
         self._s = self._s0 % track_info.track_length
@@ -271,21 +274,37 @@ class StadiumDriver(Controller):
     ) -> tuple[float, float]:
         self._s = (self._s + speed * 0.025) % self._length
         s = self._s
-        in_arc = (6.0 <= s < 6.0 + 2.0 * math.pi) or (
-            12.0 + 2.0 * math.pi <= s < self._length
+        in_arc = (120.0 <= s < 120.0 + self._ARC) or (
+            240.0 + self._ARC <= s < self._length
         )
         return self._speed, (self.ARC_STEER if in_arc else 0.0)
 
 
+def _reposition_to_wall(v: Vehicle) -> None:
+    """Park the vehicle just inside the bottom-straight wall, heading into it.
+
+    On the 20 m-wide stadium a crash reset lands the vehicle 10 m from any
+    wall, farther than a 1.5 s ghost drive (<=9 m from rest) can cover. Park
+    it 2 m off the near wall so the ghost drive carries it through the wall
+    and it re-crashes the moment it returns to racing.
+    """
+    v.x, v.y, v.yaw = 60.0, -8.0, -math.pi / 2.0
+    v.speed = 0.0
+    v.steering = 0.0
+    v.target_speed = 0.0
+    v.target_steering = 0.0
+
+
 def test_scripted_driver_completes_a_lap(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
-    result = run_race(stadium, config, [StadiumDriver(2.0)], ["runner"])
+    result = run_race(stadium, config, [StadiumDriver(20.0)], ["runner"])
     r = result.results[0]
     assert r.status is VehicleStatus.FINISHED
     assert r.finish_order == 1
     assert r.laps_completed == 1
     assert r.crashes == 0
-    assert r.total_time == pytest.approx(12.4, abs=0.5)
+    # track_length / speed plus the standing-start ramp to 20 m/s.
+    assert r.total_time == pytest.approx(25.8, abs=0.5)
     assert r.best_lap == r.total_time
     assert r.last_lap == r.total_time
     assert r.dnf_reason is None
@@ -307,7 +326,7 @@ def test_max_crashes_dnfs(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(
         config, race=dataclasses.replace(config.race, max_crashes=2)
     )
-    result = run_race(stadium, config, [StraightDriver(2.0)], ["crasher"])
+    result = run_race(stadium, config, [StraightDriver(25.0)], ["crasher"])
     r = result.results[0]
     assert r.status is VehicleStatus.DNF
     assert r.dnf_reason is DnfReason.MAX_CRASHES
@@ -336,11 +355,12 @@ def _fingerprint(result: RaceResult) -> tuple:
 
 
 def test_race_is_deterministic(stadium: Track, config: Config) -> None:
+    config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
     first = run_race(
-        stadium, config, [StadiumDriver(2.0), StraightDriver(2.0)], ["a", "b"]
+        stadium, config, [StadiumDriver(25.0), StraightDriver(25.0)], ["a", "b"]
     )
     second = run_race(
-        stadium, config, [StadiumDriver(2.0), StraightDriver(2.0)], ["a", "b"]
+        stadium, config, [StadiumDriver(25.0), StraightDriver(25.0)], ["a", "b"]
     )
     assert _fingerprint(first) == _fingerprint(second)
 
@@ -363,7 +383,7 @@ def test_snapshot_reports_racing_and_crashed_vehicles(
         config, race=dataclasses.replace(config.race, max_crashes=1)
     )
     engine = RaceEngine(
-        stadium, config, [StraightDriver(2.0), StraightDriver(0.5)], ["fast", "slow"]
+        stadium, config, [StraightDriver(25.0), StraightDriver(0.5)], ["fast", "slow"]
     )
     fast, slow = engine.vehicles
     # The faster car starts ahead so the two live vehicles never touch.
@@ -569,7 +589,7 @@ def test_lap_timing_starts_at_countdown_end(stadium: Track, config: Config) -> N
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
     grid_s = stadium.track_length - config.race.grid_spacing
     result = run_race(
-        stadium, config, [StadiumDriver(2.0, s0=grid_s)], ["runner"], mode="race"
+        stadium, config, [StadiumDriver(20.0, s0=grid_s)], ["runner"], mode="race"
     )
     r = result.results[0]
     assert r.status is VehicleStatus.FINISHED
@@ -579,8 +599,17 @@ def test_lap_timing_starts_at_countdown_end(stadium: Track, config: Config) -> N
     # The lap clock starts at the release, not at the first tick:
     # finish time minus the single lap is exactly the countdown.
     assert r.total_time - r.last_lap == pytest.approx(config.race.countdown, abs=1e-9)
-    # One lap is the full track plus the grid offset behind the line.
-    expected = (stadium.track_length + config.race.grid_spacing) / 2.0
+    # One lap is the full track plus the grid offset behind the line,
+    # with the standing-start ramp (the car is released from rest) in
+    # place of the first 25 m at cruise.
+    speed = 20.0
+    accel = config.vehicle.max_accel
+    ramp_time = speed / accel
+    ramp_dist = 0.5 * accel * ramp_time * ramp_time
+    expected = (
+        ramp_time
+        + (stadium.track_length + config.race.grid_spacing - ramp_dist) / speed
+    )
     assert r.last_lap == pytest.approx(expected, abs=0.5)
 
 
@@ -632,21 +661,31 @@ def test_race_ends_on_timeout_with_dnfs_ranked_last(
         config, race=dataclasses.replace(config.race, laps=1, time_limit=30.0)
     )
     grid_s = stadium.track_length - config.race.grid_spacing
-    result = run_race(
+    engine = RaceEngine(
         stadium,
         config,
-        [StadiumDriver(2.0, s0=grid_s), StraightDriver(0.0)],
+        [StadiumDriver(20.0, s0=grid_s), StraightDriver(0.0)],
         ["fast", "sitter"],
         mode="race",
     )
-    fast, sitter = result.results
-    assert fast.status is VehicleStatus.FINISHED
-    assert fast.finish_order == 1
-    assert fast.total_time is not None
-    assert fast.total_time < 30.0
-    assert sitter.status is VehicleStatus.DNF
-    assert sitter.dnf_reason is DnfReason.TIMEOUT
-    assert sitter.finish_order is None
+    # The fast car's lap loops back through the sitter's grid spot just
+    # before the finish, so a grid-placed sitter would be struck. Park it
+    # off the centerline, where the following car never goes.
+    sitter = engine.vehicles[1]
+    sitter.x, sitter.y, sitter.yaw = 60.0, -6.0, 0.0
+    sitter.speed = 0.0
+    sitter.steering = 0.0
+    sitter.target_speed = 0.0
+    sitter.target_steering = 0.0
+    result = engine.run()
+    fast_res, sitter_res = result.results
+    assert fast_res.status is VehicleStatus.FINISHED
+    assert fast_res.finish_order == 1
+    assert fast_res.total_time is not None
+    assert fast_res.total_time < 30.0
+    assert sitter_res.status is VehicleStatus.DNF
+    assert sitter_res.dnf_reason is DnfReason.TIMEOUT
+    assert sitter_res.finish_order is None
     assert 30.0 <= result.time < 30.05
 
 
@@ -660,7 +699,7 @@ def test_race_ranks_two_finishers_by_finish_time(
     result = run_race(
         stadium,
         config,
-        [StadiumDriver(3.0, s0=grids[0]), StadiumDriver(2.0, s0=grids[1])],
+        [StadiumDriver(15.0, s0=grids[0]), StadiumDriver(10.0, s0=grids[1])],
         ["fast", "slow"],
         mode="race",
     )
