@@ -69,10 +69,12 @@ class Track:
     def __init__(
         self,
         name: str,
-        half_width: float,
+        width: float,
         resolution: float,
         track_length: float,
         centerline: np.ndarray,
+        left_wall: np.ndarray,
+        right_wall: np.ndarray,
         spline_x: CubicSpline,
         spline_y: CubicSpline,
         grid_origin: tuple[float, float],
@@ -82,10 +84,12 @@ class Track:
         frenet_s: np.ndarray,
     ) -> None:
         self.name = name
-        self.half_width = half_width
+        self.width = width
         self.resolution = resolution
         self.track_length = track_length
         self.centerline = centerline
+        self.left_wall = left_wall
+        self.right_wall = right_wall
         self.spline_x = spline_x
         self.spline_y = spline_y
         self.grid_origin = grid_origin
@@ -317,6 +321,8 @@ def _resample_and_fit(raw: np.ndarray, spacing: float) -> tuple:
 def _build_grid(
     centerline: np.ndarray, spec: TrackSpec
 ) -> tuple[tuple[float, float], tuple[int, int], np.ndarray]:
+    # The cells beyond the band between the two synthesized walls are
+    # exactly the cells farther than half the width from the centerline.
     half_width = spec.width / 2.0
     margin = half_width + 0.5
     xs = centerline[:, 0]
@@ -335,6 +341,50 @@ def _build_grid(
     dist, _ = tree.query(cell_centers)
     occupied = dist.reshape(ny, nx) > half_width
     return (min_x, min_y), (ny, nx), occupied
+
+
+def _offset_walls(
+    centerline: np.ndarray,
+    s: np.ndarray,
+    spline_x: CubicSpline,
+    spline_y: CubicSpline,
+    offset: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    dx = spline_x(s, 1)
+    dy = spline_y(s, 1)
+    norm = np.hypot(dx, dy)
+    nx = -dy / norm
+    ny = dx / norm
+    left = np.column_stack(
+        [centerline[:, 0] + offset * nx, centerline[:, 1] + offset * ny]
+    )
+    right = np.column_stack(
+        [centerline[:, 0] - offset * nx, centerline[:, 1] - offset * ny]
+    )
+    return left, right
+
+
+def _median_width(
+    centerline: np.ndarray, left_wall: np.ndarray, right_wall: np.ndarray
+) -> float:
+    cl = centerline[:-1, :2]
+    left_d, _ = cKDTree(left_wall).query(cl)
+    right_d, _ = cKDTree(right_wall).query(cl)
+    return float(np.median(left_d + right_d))
+
+
+def _validate_walls(name: str, left_wall: np.ndarray, right_wall: np.ndarray) -> None:
+    for label, wall in (("left", left_wall), ("right", right_wall)):
+        if wall.ndim != 2 or wall.shape[1] != 2 or len(wall) < 3:
+            raise TrackError(
+                f"track {name!r} {label} wall must be an (N, 2) array "
+                "of at least 3 points"
+            )
+        gap = math.hypot(wall[0, 0] - wall[-1, 0], wall[0, 1] - wall[-1, 1])
+        if gap > 0.1:
+            raise TrackError(
+                f"track {name!r} {label} wall does not close: endpoint gap {gap:.4f} m"
+            )
 
 
 def _dist2_to_grid(
@@ -385,7 +435,20 @@ def _centerline_to_raw(points: list[tuple[float, float]], name: str) -> np.ndarr
     return np.vstack([raw, [raw[0, 0], raw[0, 1], yaw[0]]])
 
 
-def build_track(spec: TrackSpec) -> Track:
+def build_track(
+    spec: TrackSpec,
+    walls: tuple[np.ndarray, np.ndarray] | None = None,
+    grid: tuple[tuple[float, float], tuple[int, int], np.ndarray] | None = None,
+) -> Track:
+    """Build a Track from a layout spec.
+
+    Without `walls`, both walls are synthesized at +/-spec.width/2 around
+    the centerline (the constant-width case) and the occupancy grid is
+    built from that band. A map-based build passes explicit left/right wall
+    curves together with an explicit grid; the two are required as a pair.
+    The reported width is always the median wall-to-wall distance along the
+    centerline, so a constant-width track reports its configured width.
+    """
     if spec.centerline is not None:
         raw = _centerline_to_raw(spec.centerline, spec.name)
     else:
@@ -396,13 +459,29 @@ def build_track(spec: TrackSpec) -> Track:
     centerline, track_length, spline_x, spline_y, tree, frenet_s = _resample_and_fit(
         raw, spec.resolution
     )
-    grid_origin, grid_shape, occupied = _build_grid(centerline, spec)
+    if walls is None:
+        s_vals = np.concatenate([frenet_s, [0.0]])
+        left_wall, right_wall = _offset_walls(
+            centerline, s_vals, spline_x, spline_y, spec.width / 2.0
+        )
+        if grid is None:
+            grid = _build_grid(centerline, spec)
+    else:
+        left_wall, right_wall = walls
+        _validate_walls(spec.name, left_wall, right_wall)
+        if grid is None:
+            raise TrackError(
+                f"track {spec.name!r} with explicit walls needs an explicit grid"
+            )
+    grid_origin, grid_shape, occupied = grid
     return Track(
         name=spec.name,
-        half_width=spec.width / 2.0,
+        width=_median_width(centerline, left_wall, right_wall),
         resolution=spec.resolution,
         track_length=track_length,
         centerline=centerline,
+        left_wall=left_wall,
+        right_wall=right_wall,
         spline_x=spline_x,
         spline_y=spline_y,
         grid_origin=grid_origin,

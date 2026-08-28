@@ -35,12 +35,23 @@ def synthetic_track_factory() -> Callable[[np.ndarray], Track]:
     def make(occupied: np.ndarray) -> Track:
         ny, nx = occupied.shape
         spline = CubicSpline([0.0, 1.0], [0.0, 1.0])
+        corners = np.array(
+            [
+                [0.0, 0.0],
+                [nx * 0.1, 0.0],
+                [nx * 0.1, ny * 0.1],
+                [0.0, ny * 0.1],
+                [0.0, 0.0],
+            ]
+        )
         return Track(
             name="synthetic",
-            half_width=0.5,
+            width=1.0,
             resolution=0.1,
             track_length=10.0,
             centerline=np.zeros((2, 3)),
+            left_wall=corners.copy(),
+            right_wall=corners.copy(),
             spline_x=spline,
             spline_y=spline,
             grid_origin=(0.0, 0.0),
