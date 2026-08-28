@@ -7,8 +7,14 @@ against built-in baselines and other controllers.
 ## Language
 
 **Track**:
-A closed-loop racing surface defined by a centerline, a width, and walls.
-_Avoid_: level, course, map
+A closed-loop racing surface defined by a centerline, two wall boundaries
+of variable width between them, and a wall occupancy grid.
+_Avoid_: level, course, circuit
+
+**Map**:
+A PGM image a track is built from: white pixels are the drivable surface,
+every other color is wall.
+_Avoid_: image, picture, png
 
 **Centerline**:
 The one-dimensional spine of a track; arc length, the start/finish line, and
@@ -56,6 +62,11 @@ The post-crash state in which a vehicle holds still producing no output and its
 controller is not consulted, lasting a fixed duration.
 _Avoid_: freeze, stun, reset
 
+**Waiting**:
+The pre-start state in which the field is set and the sim clock is frozen
+until the race is started.
+_Avoid_: lobby, armed, pre-race
+
 **Crash**:
 The event of a racing vehicle touching a wall or closing within the collision
 distance of another racing vehicle; the vehicle's motion is zeroed and it
@@ -83,12 +94,3 @@ _Avoid_: mid-line, gate, split
 **DNF**:
 Did-not-finish: a vehicle that exceeds the crash limit or the race time limit.
 _Avoid_: crash-out, failure
-
-**Track import**:
-The offline pipeline that turns vendored F1 circuit geodata into per-track
-centerline param files; it is an authoring tool, not a runtime editor.
-_Avoid_: track editor, level design
-
-**Scale**:
-The ratio (1:12) that shrinks real-world circuit dimensions to in-game meters.
-_Avoid_: zoom, factor

@@ -1,0 +1,106 @@
+Status: ready-for-agent
+
+# Spec: PGM Racetracks, Real-Scale Car, Start Button, Collision Trails
+
+## Problem Statement
+
+The game currently races on three vendored F1 circuits imported at 1:12 scale, and the car is 0.4 m wide on a 1.0 m wide track — 40% of the road, which reads as a truck on a driveway, and none of the numbers map to anything a real driver would recognize. The player wants to race on their own maps instead: the three PGM images that ship in the repo, where white pixels are the drivable surface and everything else is wall. The tracks have variable width (narrow chicanes, wide straights), which the current constant-width track model cannot express at all.
+
+On top of that: the web view starts the countdown the instant the engine is built, so there is no moment to look at the track before the field releases. The cars render as a line and a dot, not as cars. Crashes leave no trace — the only evidence is a counter. And the baseline numbers in the param file are called "gains" in code and docs, which is the wrong word for what they are.
+
+## Solution
+
+The three PGM maps become the game's tracks — `right-interior`, `icra-2023-short`, `icra-2025`, with `icra-2023-short` as the default — built directly from the images at track construction: the white ring is the drivable surface, every other pixel is wall, width varies exactly as the map shows. Each map's driving direction is a param-file key; the start/finish line sits at the middle of the longest straight. The scale is ~0.6 m per pixel, so the car is ~2 m wide — about one eighth of the narrowest corridor — and the physics numbers (m/s, m/s², a 90 km/h top end) are real-life in magnitude. The F1 geodata pipeline is deleted; one ADR records the new import and scale and supersedes the two F1 ADRs.
+
+The web view draws the road as the region between the two wall curves, renders each car as a status-colored body with two black wheel bars and a grey front window at true scale, and adds a Start button: the field waits with the sim clock frozen, any connected client's press releases the countdown, and headless runs start immediately as before. Each car leaves a client-side trail of its last half lap with an X dropped at every crash; both age out after half a lap of driving. The baseline parameter blocks are re-derived for the new car and track scale, verified headless to drive more than half a lap on every map (the player does the fine tuning), and the gains→parameters wording is applied across baselines, docs, and tests.
+
+## User Stories
+
+1. As a player, I want the three PGM maps to be drivable tracks (`right-interior`, `icra-2023-short`, `icra-2025`), so that I race on the circuits I picked out instead of vendored F1 geometry.
+2. As a player, I want `icra-2023-short` to be the default track, so that the shortest command gives me the shortest lap to iterate on.
+3. As a player, I want the drivable surface to be exactly the white ring of each map, so that the track I drive is the picture I can see.
+4. As a player, I want walls to follow the map's non-white pixels exactly, so that a crash happens where the image says the wall is.
+5. As a player, I want track width to vary along the lap as the map shows, so that narrow sections are genuinely tight and wide sections let me run faster.
+6. As a player, I want the car to be about one eighth of the narrowest corridor, so that the car reads as a car on the track rather than a truck.
+7. As a player, I want one fixed vehicle for the whole game (static width, no per-track variants), so that my tuning transfers between tracks.
+8. As a player, I want the physics numbers in real-life units and magnitudes (m, m/s, ~90 km/h top speed, ~8 m/s² acceleration), so that my intuition about real cars carries over.
+9. As a player, I want each map's driving direction set as a param-file key (clockwise or counterclockwise as seen on the image), so that the track runs the way the circuit is meant to be run.
+10. As a player, I want the start/finish line at the middle of the longest straight, so that the start is on the fastest part of the lap and predictable across maps.
+11. As a player, I want a malformed map (no single ring, no hole, multiple holes, non-star-shaped boundaries) to fail loudly at track construction with a clear error, so that a bad file never silently produces a weird track.
+12. As a player, I want the web view to render the road between the two wall curves at true variable width, so that what I watch is the actual drivable surface.
+13. As a player, I want the start line drawn between the two walls, so that it is visible on a road whose width changes.
+14. As a player, I want cars drawn as a body plus two black wheel bars and a grey front window at true scale, so that heading and size read like a top-down car.
+15. As a player, I want the body to keep the current status colors (racing, paused, ghost, finished, DNF), so that I can read vehicle state at a glance.
+16. As a player, I want a Start button in the web view, so that I can load the page, study the track, and choose when the field releases.
+17. As a player, I want the sim clock frozen while the field waits, so that no race time is lost before I press Start and the countdown runs only after it.
+18. As a player, I want headless runs to start immediately with no button, so that my CLI workflow and CI are unchanged.
+19. As a player, I want each car to leave a fading trail of the last half lap, so that I can see the line my controller actually drove.
+20. As a player, I want an X dropped at each crash location, so that I can see where — and how often — my controller hits something.
+21. As a player, I want the trail to break at a crash (no straight line from the crash point to the centerline reset), so that the trail shows driven path only.
+22. As a player, I want the trail and the Xs to age out after half a lap of driving, so that stale history stops cluttering the view.
+23. As a player, I want the baselines and the starter re-tuned to the new car and track scale, each able to drive more than half a lap on every map, so that I have working opponents to beat from the first run.
+24. As a player, I want all baseline numbers to stay in the param file, so that I can fine-tune without touching code.
+25. As a player, I want to pick any of the three maps from the CLI by name, so that I choose my circuit per session.
+26. As a developer, I want the track model to be a centerline plus two wall boundary curves plus a wall occupancy grid, so that variable-width tracks are first-class while collision and laser scans stay grid-based.
+27. As a developer, I want the map's drivable mask (upsampled 2×) to be the occupancy grid, so that the collision boundary is pixel-exact without a separate wall model.
+28. As a developer, I want the centerline extraction to reuse the existing resample-and-spline Frenet machinery, so that Frenet queries, the lap tracker, and the grid logic are untouched.
+29. As a developer, I want the F1 geodata pipeline gone (importer, its tests, the vendored geodata, the per-track JSONs, the param entries, the ADRs marked superseded), so that the codebase has one track source instead of three.
+30. As a developer, I want the segments stadium to survive, rescaled so the new car fits, so that the fast synthetic test track remains.
+31. As a developer, I want the engine to expose a `waiting` phase and a `start()` release, so that the start gate is testable headless without a browser.
+32. As a developer, I want the start message to be handled on the sim thread via a queue, so that exactly one thread mutates the engine.
+33. As a developer, I want the static protocol to send the wall curves, track length, and vehicle dimensions instead of the occupied-cell list and constant width, so that the connect payload drops from megabytes to tens of kilobytes and the view draws the exact road.
+34. As a developer, I want the front-end structural tests to keep asserting the page covers every protocol field, so that a renamed key fails CI before a human notices.
+35. As a developer, I want the word "gains" replaced by "parameters" in the baseline controllers and their tests, so that code vocabulary matches what the param file actually holds.
+36. As a developer, I want a new ADR recording the PGM import, the ~0.6 m/px scale, and the one-eighth vehicle rule, so that a future reader understands why pixels are meters and the car is two metres wide.
+37. As a developer, I want an ADR marked superseded rather than deleted, so that the history of the 1:12 decision and why it died stays readable.
+
+## Implementation Decisions
+
+- **Track model**: a track is a centerline, two closed wall boundary curves (left/right relative to the driving direction), and a wall occupancy grid. The constant half-width concept is removed; track width is the median of the wall-to-wall distance along the centerline and is what the CLI reports. The track-info passed to controllers keeps its shape; its width is now the median width.
+- **Map import**: PGM P5 images are parsed at track construction. A pixel at or above the threshold is drivable, everything else is wall. The threshold defaults to 250 (the maps' drivable pixels are 254, the background 205, outlines 0) and can be overridden per track. Only the largest drivable connected component is kept — the maps carry 1–6 px anti-aliasing specks that must be dropped, not errored on. The cleaned mask must enclose exactly one interior hole; zero holes or more than one is a track error. The outer boundary and the hole boundary are matched by polar angle around the hole centroid; each boundary must be star-shaped about that centroid (a single radius per angle) or the build fails. The centerline is the pointwise midline of the matched boundaries, and from there the existing resample, periodic cubic-spline, and Frenet KD-tree machinery is reused unchanged.
+- **Scale and grid**: one global scale of 0.6 m per pixel (param-file `maps` section, per-track override), so the narrowest corridor (26 px median) is 15.6 m and the car is ~1/8 of it. World coordinates are the image's, with y up and the origin at the map corner. The occupancy grid is the drivable mask upsampled 2×, giving 0.3 m cells — finer than a car-width on every map.
+- **Start/finish**: the start line is the midpoint of the longest straight of the centerline (a straight is the longest span whose heading changes less than 2°). The centerline is re-fitted so the start sits at s=0; the mid-track checkpoint stays at s = length/2, and the starting grid stays staggered behind the line.
+- **Direction**: a required per-track param-file key (`cw` or `ccw`, as seen on the map image) for map-based tracks; the centerline is ordered to travel that way. The legacy authoring paths take direction from point order, as today.
+- **Vehicle**: one global vehicle, static throughout the game: width 2.0 m, length 2.5 m, wheelbase 1.65 m (lf 0.79 / lr 0.86, current proportions kept), max speed 25 m/s, max acceleration 8 m/s², max steering ±0.5 rad, steering rate ±4 rad/s. Minimum turning radius ~3.2 m clears the tightest corners.
+- **Race block re-derivation**: collision distance 2.5 m (1.25× width), grid spacing 3.75 m (1.5× length), time limit raised to 600 s for the longer maps; laps, crash pause, ghost duration, max crashes, and countdown are unchanged.
+- **Stadium**: kept as the segments-authoring track, rescaled ×20 (width 20 m, straights 120 m, turn radius 40 m, 0.3 m grid) so the 2 m car fits; it is the constant-width special case where both walls are synthesized at ±width/2 around the centerline. The centerline-JSON authoring path is kept the same way.
+- **Engine start gate**: a new initial phase `waiting`, entered when the engine is constructed without auto-start. `start()` releases: the countdown begins in race mode, and time-trial mode releases immediately. While waiting, a tick is a no-op and the sim clock stays frozen at 0.0. The headless entry point auto-starts, so its contract is unchanged.
+- **Live mode threading**: the WebSocket handler accepts client messages of type `start` and pushes them to a thread-safe queue; the sim loop drains the queue every tick and calls `start()` itself. The first start message wins; later ones are ignored. The engine is mutated only by the sim thread.
+- **Protocol**: the static message carries the track name, centerline, the two wall curves, track length, vehicle dimensions (length, width), and the start line; the occupied-cell list and the constant track width are dropped. Wall curves are sent downsampled to ~1 m spacing for the payload; in-process curves stay at full resolution. The dynamic message is unchanged except that `phase` can now be `waiting`.
+- **Front end**: the road is filled between the two wall curves with a dashed centerline over it; the start line spans the walls. Cars are true-scale rectangles: status-colored body, two black wheel bars across the front and rear axles, and a grey front window, each with a minimum visible pixel size. A Start button is visible exactly while the phase is `waiting` and sends the start message. Trails are client-side: each car's positions accumulate from the dynamic messages, the trail keeps the last half lap of driven arc length (faded by age), a crash drops an X at the crash point and breaks the trail, and Xs expire on the same arc-length window.
+- **Baseline re-tune**: every baseline parameter block is re-derived from its old values by the scale factor, then adjusted headless until each baseline and the starter drives more than half a lap on every map track. The fine tuning beyond that bar is the player's.
+- **Gains → parameters**: the `_GAINS` tuple becomes `_PARAMETERS` in all three baselines, the `gains` locals become `parameters`, docstrings change from "Every gain comes from the param file" to "Every parameter comes from the param file", and the missing-key test is renamed to match. Out of scope: `CENTER_GAIN` in the starter (a genuine control-theory gain constant), the `kp`/`kd` key names, and the historical files under the old feature's scratch directory.
+- **F1 removal**: deleted — the track importer module and its tests, the vendored F1 geodata and its source note, the three F1 per-track JSON files, their param-file entries, and the F1 test fixture. The CLI and README examples switch to the new track names. ADRs 0001 and 0002 get superseded-by headers pointing at a new ADR (PGM import, scale, one-eighth vehicle); the glossary already dropped the Scale and Track import terms and gained Map and Waiting.
+
+## Testing Decisions
+
+- Good tests assert external behavior at the existing seams only; this feature introduces no new seams.
+- **Track builder** (highest seam for the map work): each of the three shipped maps builds; topology is verified (single ring, one hole); the median width matches the measured pixel widths times the scale within tolerance; the start line lands on a straight with the correct heading; the direction key is honored (reversing it reverses the centerline); a synthetic PGM in a temp dir covers the threshold override, both directions, and the failure modes (no hole, two holes, non-star-shaped boundary) as track errors.
+- **Config loader**: the `maps` section defaults apply, per-track overrides win, a map track without a direction key is a config error, and the removed F1 tracks are gone from the loaded track set.
+- **Engine**: `waiting` is the initial phase without auto-start; `start()` leads to the countdown in race mode and to immediate racing in time-trial mode; ticks while waiting advance nothing (time frozen, vehicle state unchanged); the auto-start path behaves exactly as before.
+- **Protocol serializers**: the static message contains the wall curves, track length, and vehicle dimensions and no longer contains the grid or a constant width; the dynamic message carries the `waiting` phase.
+- **Front end** (structural, no browser — the existing pattern): the page references every field the serializers emit (the test extracts the names, so a rename fails CI), contains the start-message type, the Start button element, and the rectangle/trail drawing hooks.
+- **Controllers**: the contract tests pass unchanged (the controller API is untouched); the missing-parameter test carries the renamed name.
+- **Acceptance (one-shot verification, not CI)**: a script runs each baseline and the starter headless on each of the three map tracks and asserts that maximum progress along the centerline exceeds half the track length. Full 12-race runs are too slow for the test suite; CI keeps a short headless smoke per map track (the track builds and a brief run ticks cleanly) plus the existing tick-budget performance test.
+- Prior art: the existing track, config, engine, web-protocol, web-frontend, controller, and performance test modules.
+
+## Out of Scope
+
+- Restarting or re-running a race from the web view; when the race ends the process ends, as today.
+- Per-client start control or multiple simultaneous live clients; any client's start message releases the field.
+- Server-side trail state or trail fields in the protocol; the trail and the Xs are purely a front-end concern.
+- Per-track vehicle geometry; there is one global vehicle.
+- Online map upload or an interactive track editor; maps ship in the repo, and hand-authored constant-width tracks remain possible through the segments and centerline-JSON paths.
+- Changes to the controller contract (reset/step signatures, scan model) beyond the track-info width now being the median width.
+- Rule changes: lap count, crash pause, ghost duration, DNF limits, timeout, laser-scan semantics.
+- The final physics and baseline tuning; this spec gets them to the "more than half a lap" bar and hands the rest to the player.
+- Headless rendering of trails or crash marks; the console output stays results-only.
+
+## Further Notes
+
+- Measured map statistics for implementation sanity checks (median/min/max corridor width in px, centerline length in px): `right-interior` 36/24/71, ~1720 px long; `icra-2023-short` 40/28/57, ~900 px long; `icra-2025` 26/22/52, ~2600 px long. All three are a single closed ring plus one hole plus tiny anti-aliasing specks.
+- The maps' pixel values are 254 (drivable), 205 (background), and 0 (wall outlines, locally thick on `right-interior`); any threshold between 205 and 254 separates the two classes, 250 is the chosen default.
+- Ray-march cost is roughly unchanged: the grid is finer (0.3 m vs 0.1 m cells) but every beam terminates within the corridor, so the number of steps per beam is on the same order. The tick-budget performance test will confirm.
+- The old static message shipped the full occupied-cell list — for Spa that is ~1.6 million coordinate pairs, i.e. a multi-megabyte connect payload. Dropping the grid from the protocol removes this latent problem.
+- The glossary (domain doc at the repo root) was updated during design: Track now means centerline + two walls + grid, Map and Waiting are new terms, and Scale and Track import are gone.
+- The new ADR is the third in the ADR series; ADRs 0001 (vendored F1 geodata) and 0002 (1:12 scale and vehicle speed) are superseded by it, not deleted.
