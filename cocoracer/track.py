@@ -15,6 +15,56 @@ def wrap_angle(angle: float) -> float:
     return (angle + math.pi) % (2.0 * math.pi) - math.pi
 
 
+STRAIGHT_MAX_TURN_DEG = 1.0
+
+
+def _ring_body(points: np.ndarray) -> np.ndarray:
+    if len(points) > 1 and np.allclose(points[0], points[-1]):
+        return points[:-1]
+    return points
+
+
+def _segment_turns(body: np.ndarray) -> np.ndarray:
+    nxt = np.roll(body, -1, axis=0)
+    prv = np.roll(body, 1, axis=0)
+    d1 = np.arctan2(body[:, 1] - prv[:, 1], body[:, 0] - prv[:, 0])
+    d2 = np.arctan2(nxt[:, 1] - body[:, 1], nxt[:, 0] - body[:, 0])
+    delta = d2 - d1
+    turns: np.ndarray = np.abs(np.arctan2(np.sin(delta), np.cos(delta)))
+    return turns
+
+
+def rotate_to_straightest_start(
+    points: np.ndarray, max_turn_deg: float = STRAIGHT_MAX_TURN_DEG
+) -> np.ndarray:
+    """Rotate a closed ring so index 0 sits mid-way on its longest straight.
+
+    The ring must be uniformly spaced (the per-vertex turn budget is a
+    curvature measure only at a known spacing). A straight is a run of
+    vertices whose turn angle is below `max_turn_deg`. Raises
+    TrackError when no run of at least three segments exists.
+    """
+    body = _ring_body(points)
+    n = len(body)
+    ok = _segment_turns(body) < math.radians(max_turn_deg)
+    best_start, best_len = 0, 0
+    run_start, run_len = 0, 0
+    for i in range(2 * n):
+        if ok[i % n]:
+            if run_len == 0:
+                run_start = i
+            run_len += 1
+            if 0 < run_len <= n and run_len > best_len:
+                best_start, best_len = run_start, run_len
+        else:
+            run_len = 0
+    if best_len < 3:
+        raise TrackError("no straight run of 3+ segments; cannot place start line")
+    start = (best_start + best_len // 2) % n
+    rotated = np.roll(body, -start, axis=0)
+    return np.vstack([rotated, rotated[:1]])
+
+
 class Track:
     def __init__(
         self,
