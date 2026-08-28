@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] `_GAINS` is `_PARAMETERS` in all three baselines and the `gains` locals are `parameters`
-- [ ] Docstrings read "Every parameter comes from the param file"
-- [ ] The missing-key test carries the renamed name
-- [ ] The starter's `CENTER_GAIN`, the `kp`/`kd` keys, and the old scratch directory are untouched
-- [ ] Controller contract tests pass unchanged
+- [x] `_GAINS` is `_PARAMETERS` in all three baselines and the `gains` locals are `parameters`
+- [x] Docstrings read "Every parameter comes from the param file"
+- [x] The missing-key test carries the renamed name
+- [x] The starter's `CENTER_GAIN`, the `kp`/`kd` keys, and the old scratch directory are untouched
+- [x] Controller contract tests pass unchanged

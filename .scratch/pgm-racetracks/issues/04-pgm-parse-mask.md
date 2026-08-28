@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] P5 parse produces a boolean drivable mask at the image's dimensions
-- [ ] Threshold default 250, overridable per track; a synthetic PGM in a temp dir verifies the override
-- [ ] Anti-aliasing specks are dropped: only the largest connected component survives
-- [ ] All three shipped maps parse to a single component of the expected size
+- [x] P5 parse produces a boolean drivable mask at the image's dimensions
+- [x] Threshold default 250, overridable per track; a synthetic PGM in a temp dir verifies the override
+- [x] Anti-aliasing specks are dropped: only the largest connected component survives
+- [x] All three shipped maps parse to a single component of the expected size

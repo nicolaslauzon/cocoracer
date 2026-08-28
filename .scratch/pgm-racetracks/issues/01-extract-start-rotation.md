@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Rotation logic callable from the track module on any closed centerline
-- [ ] F1 importer delegates to the helper; all existing importer tests pass unchanged, including the committed-file match test
-- [ ] All four checks (ruff format, ruff check, mypy, pytest) green
+- [x] Rotation logic callable from the track module on any closed centerline
+- [x] F1 importer delegates to the helper; all existing importer tests pass unchanged, including the committed-file match test
+- [x] All four checks (ruff format, ruff check, mypy, pytest) green

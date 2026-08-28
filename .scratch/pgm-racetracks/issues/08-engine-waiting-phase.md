@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] An engine constructed without auto-start is in phase `waiting`
-- [ ] Ticks while waiting advance nothing: time frozen at 0.0, vehicle state unchanged
-- [ ] `start()` begins the countdown in race mode and releases immediately in time-trial mode
-- [ ] The auto-start path behaves exactly as before; all existing engine tests pass
+- [x] An engine constructed without auto-start is in phase `waiting`
+- [x] Ticks while waiting advance nothing: time frozen at 0.0, vehicle state unchanged
+- [x] `start()` begins the countdown in race mode and releases immediately in time-trial mode
+- [x] The auto-start path behaves exactly as before; all existing engine tests pass

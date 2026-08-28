@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Vehicle geometry and limits come from the param file; minimum turning radius (~3.2 m) clears the tightest stadium corners
-- [ ] Collision distance, grid spacing, and time limit updated; unchanged values (laps, pause, ghost, crash limit, countdown) untouched
-- [ ] Stadium rescaled and still builds, reports its width, and a headless time-trial ticks cleanly to completion (lap progress bar arrives in ticket 17)
-- [ ] All four checks green
+- [x] Vehicle geometry and limits come from the param file; minimum turning radius (~3.2 m) clears the tightest stadium corners
+- [x] Collision distance, grid spacing, and time limit updated; unchanged values (laps, pause, ghost, crash limit, countdown) untouched
+- [x] Stadium rescaled and still builds, reports its width, and a headless time-trial ticks cleanly to completion (lap progress bar arrives in ticket 17)
+- [x] All four checks green
