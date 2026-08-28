@@ -57,9 +57,9 @@ baselines:
     target_speed: 15.0
   wall_follow:
     target_wall_distance: 0.3
-    kp: 1.0
-    kd: 0.1
-    v_ref: 15.0
+    kp: 0.45
+    kd: 2.0
+    v_ref: 4.0
     steer_speed_factor: 0.5
     sector_half_angle: 60.0
   gap_follow:
