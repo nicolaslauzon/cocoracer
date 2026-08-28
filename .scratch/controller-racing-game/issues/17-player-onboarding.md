@@ -6,8 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] README quickstart works end-to-end from a fresh clone: install → copy stub → run time trial → run head2head vs a baseline → watch the web view
-- [ ] The stub documents the tick contract (state fields, laser scan, `np.inf` no-hit, outputs, internal state) and points at the vehicle limits in the param file
-- [ ] CLI `--help` for both subcommands documents every option, including the headless flag
-- [ ] Dependencies are tidy: all used deps listed, no teleop/matplotlib deps remain
-- [ ] README documents all modes (time trial, head2head, N-vehicle), the three baselines, the crash → pause → ghost rules, and how to add a new track
+- [x] README quickstart works end-to-end from a fresh clone: install → copy stub → run time trial → run head2head vs a baseline → watch the web view
+- [x] The stub documents the tick contract (state fields, laser scan, `np.inf` no-hit, outputs, internal state) and points at the vehicle limits in the param file
+- [x] CLI `--help` for both subcommands documents every option, including the headless flag
+- [x] Dependencies are tidy: all used deps listed, no teleop/matplotlib deps remain
+- [x] README documents all modes (time trial, head2head, N-vehicle), the three baselines, the crash → pause → ghost rules, and how to add a new track
+
+## Comments
+
+Done in `wt-17` (2026-08-28). Added `README.md`: install → copy `controllers/starter.py` → time trial → head2head → web view, plus all modes (time trial, head2head, N-vehicle), the three baselines, the crash → pause → ghost rules, and add-a-track (inline `segments` or JSON `centerline`). Wrote the documented starter stub `controllers/starter.py` — full tick-contract docstring and a pointer at the `vehicle:` limits, plus a laser-only centering driver that finishes the stadium clean. Polished `cocoracer/cli.py` `--help` for both subcommands, including the `--no-web` headless flag. Verified deps are tidy (numpy, jax, scipy, pyyaml, fastapi, uvicorn, websockets; no teleop/matplotlib). Added `tests/test_starter.py`. Four checks green.

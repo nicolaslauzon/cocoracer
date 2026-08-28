@@ -16,32 +16,87 @@ def _default_params() -> Path:
 
 
 def _add_race_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--track", default=None, help="track name from the param file")
+    parser.add_argument(
+        "--track",
+        default=None,
+        help="track name from the param file (default: the configured default track)",
+    )
     parser.add_argument(
         "--controller",
         required=True,
-        help="comma-separated controller file paths",
+        metavar="PATH[,PATH...]",
+        help="comma-separated controller file paths to load, e.g. "
+        "controllers/starter.py,controllers/pure_pursuit.py",
     )
-    parser.add_argument("--laps", type=int, default=None, help="override lap count")
     parser.add_argument(
-        "--no-web", action="store_true", help="disable the live web view"
+        "--laps",
+        type=int,
+        default=None,
+        help="override the lap count from the param file",
     )
-    parser.add_argument("--port", type=int, default=8000, help="web view port")
+    parser.add_argument(
+        "--no-web",
+        action="store_true",
+        help="run headless: skip the live web view and just print the results",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="port for the live web view, ignored with --no-web (default 8000)",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
+    examples = (
+        "examples:\n"
+        "  # time the starter controller alone (headless)\n"
+        "  cocoracer time-trial --controller controllers/starter.py --no-web\n"
+        "\n"
+        "  # race the starter against two baselines, with the live web view\n"
+        "  cocoracer race \\\n"
+        "    --controller controllers/starter.py,controllers/pure_pursuit.py,controllers/wall_follow.py\n"
+        "\n"
+        "  # three-vehicle race on the Spa circuit for five laps\n"
+        "  cocoracer race --track spa --laps 5 \\\n"
+        "    --controller controllers/starter.py,controllers/wall_follow.py,controllers/disparity_extender.py\n"
+    )
     parser = argparse.ArgumentParser(
-        prog="cocoracer", description="Program an autonomous controller and race it."
+        prog="cocoracer",
+        description=(
+            "Program an autonomous racing controller and race it in a "
+            "deterministic 2-D car."
+        ),
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--params", type=Path, default=None, help="path to the YAML param file"
+        "--params",
+        type=Path,
+        default=None,
+        help="path to the YAML param file (default: params/default.yaml); "
+        "must come before the subcommand",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(
+        dest="command",
+        required=True,
+        title="commands",
+        description="time-trial races one controller alone; race pits two or more "
+        "against each other head-to-head.",
+    )
     time_trial = sub.add_parser(
-        "time-trial", help="race a single controller alone on the track"
+        "time-trial",
+        help="race a single controller alone on the track",
+        description="Race a single controller alone on the track and print its "
+        "lap times.",
     )
     _add_race_args(time_trial)
-    race = sub.add_parser("race", help="race two or more controllers head-to-head")
+    race = sub.add_parser(
+        "race",
+        help="race two or more controllers head-to-head",
+        description="Race two or more controllers head-to-head and print the "
+        "classified results.",
+    )
     _add_race_args(race)
     return parser
 
