@@ -44,7 +44,7 @@ def test_rejects_missing_baselines() -> None:
         load_controller(DISPARITY_EXTENDER)
 
 
-def test_missing_gain_key_is_rejected(config: Config) -> None:
+def test_missing_parameter_key_is_rejected(config: Config) -> None:
     broken = {
         "disparity_extender": {
             key: value

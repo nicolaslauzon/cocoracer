@@ -3,7 +3,7 @@
 Centerline following with a speed-scaled lookahead, ported from the
 pre-package experiment to the controller API. The lookahead target is
 the centerline point one lookahead distance ahead in arc length, and the
-steering command is the classic pure-pursuit formula. Every gain comes
+steering command is the classic pure-pursuit formula. Every parameter comes
 from the param file's baselines.pure_pursuit block, injected at load
 time.
 """
@@ -14,7 +14,7 @@ import numpy as np
 
 from cocoracer.controller import Controller, ControllerError, TrackInfo
 
-_GAINS = (
+_PARAMETERS = (
     "wheelbase",
     "max_steer",
     "lookahead_slope",
@@ -32,18 +32,18 @@ class PurePursuit(Controller):
             raise ControllerError(
                 "param file is missing the baselines.pure_pursuit block"
             )
-        gains: dict[str, float] = {}
-        for key in _GAINS:
+        parameters: dict[str, float] = {}
+        for key in _PARAMETERS:
             if key not in block:
                 raise ControllerError(f"baselines.pure_pursuit is missing key '{key}'")
-            gains[key] = float(block[key])
-        self._wheelbase = gains["wheelbase"]
-        self._max_steer = gains["max_steer"]
-        self._slope = gains["lookahead_slope"]
-        self._offset = gains["lookahead_offset"]
-        self._min_lookahead = gains["min_lookahead"]
-        self._max_lookahead = gains["max_lookahead"]
-        self._target_speed = gains["target_speed"]
+            parameters[key] = float(block[key])
+        self._wheelbase = parameters["wheelbase"]
+        self._max_steer = parameters["max_steer"]
+        self._slope = parameters["lookahead_slope"]
+        self._offset = parameters["lookahead_offset"]
+        self._min_lookahead = parameters["min_lookahead"]
+        self._max_lookahead = parameters["max_lookahead"]
+        self._target_speed = parameters["target_speed"]
         self._points: np.ndarray | None = None
         self._spacing = 0.0
 

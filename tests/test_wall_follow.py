@@ -33,7 +33,7 @@ def test_rejects_missing_baselines() -> None:
         load_controller(WALL_FOLLOW)
 
 
-def test_missing_gain_key_is_rejected(config: Config) -> None:
+def test_missing_parameter_key_is_rejected(config: Config) -> None:
     baselines = {k: dict(v) for k, v in config.baselines.items()}
     del baselines["wall_follow"]["kp"]
     with pytest.raises(ControllerError, match="missing key"):
