@@ -121,3 +121,32 @@ def test_race_missing_controller_file() -> None:
     argv = _race_argv(f"{STUB},{REPO_ROOT / 'nope.py'}")
     with pytest.raises(SystemExit, match="not found"):
         main(argv)
+
+
+def test_top_level_help_documents_params_and_commands(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit):
+        main(["--help"])
+    out = capsys.readouterr().out
+    assert "--params" in out
+    assert "time-trial" in out
+    assert "race" in out
+
+
+def test_time_trial_help_documents_options(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit):
+        main(["time-trial", "--help"])
+    out = capsys.readouterr().out
+    for flag in ("--track", "--controller", "--laps", "--no-web", "--port"):
+        assert flag in out
+
+
+def test_race_help_documents_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["race", "--help"])
+    out = capsys.readouterr().out
+    for flag in ("--track", "--controller", "--laps", "--no-web", "--port"):
+        assert flag in out

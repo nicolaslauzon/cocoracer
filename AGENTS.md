@@ -10,6 +10,16 @@ mypy cocoracer tests
 pytest
 ```
 
+## Running & verifying
+
+Verify a controller by running it headless:
+
+```bash
+cocoracer time-trial --controller controllers/starter.py --no-web
+```
+
+`--params FILE` is a top-level flag that precedes the subcommand. In a git worktree there is no `.venv`, and the `cocoracer` script points at the main checkout, so run `.venv/bin/python -m cocoracer.cli ...` from the worktree root to test the branch's code. Full usage: `README.md`.
+
 ## Agent skills
 
 ### Issue tracker
