@@ -1,4 +1,5 @@
 import argparse
+import queue
 import sys
 import time
 from pathlib import Path
@@ -178,6 +179,23 @@ def _print_results(result: RaceResult) -> None:
     print(f"race time: {result.time:.3f} s")
 
 
+def _drain_starts(start_queue: queue.Queue[None], engine: RaceEngine) -> None:
+    """Release the waiting field if a client start message is queued.
+
+    The first message wins: pop one, release, discard the rest.
+    """
+    try:
+        start_queue.get_nowait()
+    except queue.Empty:
+        return
+    engine.start()
+    while True:
+        try:
+            start_queue.get_nowait()
+        except queue.Empty:
+            return
+
+
 def _run_live(
     config: Config,
     track: Track,
@@ -188,14 +206,16 @@ def _run_live(
 ) -> RaceResult:
     from cocoracer.web.server import WebServer
 
-    engine = RaceEngine(track, config, instances, names, mode=mode)
-    server = WebServer(engine, port=port)
+    engine = RaceEngine(track, config, instances, names, mode=mode, auto_start=False)
+    start_queue: queue.Queue[None] = queue.Queue()
+    server = WebServer(engine, start_queue=start_queue, port=port)
     server.start()
     print(f"web view: {server.url}")
     try:
         next_tick = time.monotonic()
         period = config.sim.tick_dt
         while not engine.finished:
+            _drain_starts(start_queue, engine)
             engine.tick()
             next_tick += period
             delay = next_tick - time.monotonic()

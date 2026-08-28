@@ -2,11 +2,14 @@
 
 The server runs in a daemon thread beside the sim loop. On connect the
 client gets the static track message once, then a dynamic message every
-~150 ms. The web thread only reads engine state; all pacing lives here,
-never in the engine.
+~150 ms. Client start messages are pushed onto the start queue; the sim
+loop drains it and releases the field, so the web thread never mutates
+the engine. All pacing lives here, never in the engine.
 """
 
 import asyncio
+import json
+import queue
 import threading
 import time
 from pathlib import Path
@@ -23,7 +26,17 @@ _DYNAMIC_INTERVAL = 0.15
 _START_TIMEOUT = 10.0
 
 
-def create_app(engine: RaceEngine) -> FastAPI:
+def handle_client_message(message: str, start_queue: queue.Queue[None]) -> None:
+    """Enqueue a field release if the client message is a start request."""
+    try:
+        payload = json.loads(message)
+    except ValueError:
+        return
+    if isinstance(payload, dict) and payload.get("type") == "start":
+        start_queue.put(None)
+
+
+def create_app(engine: RaceEngine, start_queue: queue.Queue[None]) -> FastAPI:
     """Build the live view app for one engine."""
     app = FastAPI()
 
@@ -37,6 +50,14 @@ def create_app(engine: RaceEngine) -> FastAPI:
         await websocket.send_text(build_static_message(engine.track))
         try:
             while True:
+                try:
+                    message = await asyncio.wait_for(
+                        websocket.receive_text(), _DYNAMIC_INTERVAL
+                    )
+                except asyncio.TimeoutError:
+                    message = None
+                if message is not None:
+                    handle_client_message(message, start_queue)
                 await websocket.send_text(
                     build_dynamic_message(
                         engine.snapshot(),
@@ -45,7 +66,6 @@ def create_app(engine: RaceEngine) -> FastAPI:
                         engine.last_scans,
                     )
                 )
-                await asyncio.sleep(_DYNAMIC_INTERVAL)
         except WebSocketDisconnect:
             pass
 
@@ -56,13 +76,20 @@ class WebServer:
     """The live view app, served in a daemon thread."""
 
     def __init__(
-        self, engine: RaceEngine, host: str = "127.0.0.1", port: int = 8000
+        self,
+        engine: RaceEngine,
+        start_queue: queue.Queue[None],
+        host: str = "127.0.0.1",
+        port: int = 8000,
     ) -> None:
         self._host = host
         self._port = port
         self._server = uvicorn.Server(
             uvicorn.Config(
-                create_app(engine), host=host, port=port, log_level="warning"
+                create_app(engine, start_queue),
+                host=host,
+                port=port,
+                log_level="warning",
             )
         )
         self._thread: threading.Thread | None = None
