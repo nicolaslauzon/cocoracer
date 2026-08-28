@@ -1,16 +1,41 @@
 """Tests for the cocoracer CLI."""
 
+import json
+import queue
 import shutil
 import socket
+import threading
+import time
 from pathlib import Path
 
+import numpy as np
 import pytest
+import websockets.sync.client
 
-from cocoracer.cli import main
+from cocoracer.cli import _drain_starts, main
+from cocoracer.config import Config
+from cocoracer.controller import Controller
+from cocoracer.engine import RaceEngine
+from cocoracer.track import Track
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STUB = REPO_ROOT / "controllers" / "open_loop.py"
 PARAMS = REPO_ROOT / "params" / "default.yaml"
+
+
+class Sitter(Controller):
+    """Sits on the grid: zero speed, zero steer."""
+
+    def step(
+        self,
+        x: float,
+        y: float,
+        yaw: float,
+        speed: float,
+        steering_angle: float,
+        laser_scan: np.ndarray,
+    ) -> tuple[float, float]:
+        return 0.0, 0.0
 
 
 def _free_port() -> int:
@@ -43,6 +68,22 @@ def test_time_trial_stub_dnf_headless(capsys: pytest.CaptureFixture[str]) -> Non
     assert "race time:" in out
 
 
+def _send_start(port: int, done: threading.Event) -> None:
+    """Connect to the live view and release the field with a start message."""
+    deadline = time.monotonic() + 15.0
+    while time.monotonic() < deadline:
+        try:
+            with websockets.sync.client.connect(
+                f"ws://127.0.0.1:{port}/ws", max_size=32 * 1024 * 1024
+            ) as ws:
+                ws.recv()  # the static message arrives first
+                ws.send(json.dumps({"type": "start"}))
+            done.set()
+            return
+        except OSError:
+            time.sleep(0.05)
+
+
 def test_time_trial_live_starts_web_view_and_runs(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
@@ -55,14 +96,41 @@ def test_time_trial_live_starts_web_view_and_runs(
     port = _free_port()
     argv = _time_trial_argv("--port", str(port))
     argv[argv.index("--params") + 1] = str(short)
+    started = threading.Event()
+    client = threading.Thread(target=_send_start, args=(port, started), daemon=True)
+    client.start()
     rc = main(argv)
     out = capsys.readouterr().out
     assert rc == 0
+    assert started.is_set()
     assert f"web view: http://127.0.0.1:{port}" in out
     assert "(web view not implemented yet; running headless)" not in out
     assert "results (stadium):" in out
     assert "DNF" in out
     assert "[timeout]" in out
+
+
+def test_drain_starts_first_wins_duplicates_ignored(
+    stadium: Track, config: Config, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine = RaceEngine(stadium, config, [Sitter()], ["sitter"], auto_start=False)
+    calls: list[int] = [0]
+    release = engine.start
+
+    def counting_release() -> None:
+        calls[0] += 1
+        release()
+
+    monkeypatch.setattr(engine, "start", counting_release)
+    start_queue: queue.Queue[None] = queue.Queue()
+    for _ in range(3):
+        start_queue.put(None)
+    _drain_starts(start_queue, engine)
+    assert calls[0] == 1
+    assert engine.phase == "racing"
+    assert start_queue.empty()
+    _drain_starts(start_queue, engine)
+    assert calls[0] == 1
 
 
 def test_time_trial_rejects_two_controllers() -> None:
