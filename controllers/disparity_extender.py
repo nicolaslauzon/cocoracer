@@ -9,7 +9,7 @@ farthest beam of the extended front sector, and the car steers toward it
 with a P/D law on the target angle. Speed comes from the distance to the
 target (full speed when far, a flat brake zone when close, linear in
 between) and is additionally capped by the friction-limited speed for the
-current steering angle. Every gain comes from the param file's
+current steering angle. Every parameter comes from the param file's
 baselines.disparity_extender block, injected at load time.
 """
 
@@ -19,7 +19,7 @@ import numpy as np
 
 from cocoracer.controller import Controller, ControllerError, TrackInfo
 
-_GAINS = (
+_PARAMETERS = (
     "car_width",
     "wheelbase",
     "max_steer",
@@ -42,24 +42,24 @@ class DisparityExtender(Controller):
             raise ControllerError(
                 "param file is missing the baselines.disparity_extender block"
             )
-        gains: dict[str, float] = {}
-        for key in _GAINS:
+        parameters: dict[str, float] = {}
+        for key in _PARAMETERS:
             if key not in block:
                 raise ControllerError(
                     f"baselines.disparity_extender is missing key '{key}'"
                 )
-            gains[key] = float(block[key])
-        self._car_width = gains["car_width"]
-        self._wheelbase = gains["wheelbase"]
-        self._max_steer = gains["max_steer"]
-        self._kp = gains["kp"]
-        self._kd = gains["kd"]
-        self._full_speed_distance = gains["full_speed_distance"]
-        self._brake_distance = gains["brake_distance"]
-        self._min_speed = gains["min_speed"]
-        self._max_speed = gains["max_speed"]
-        self._friction = gains["friction"]
-        self._disparity_threshold = gains["disparity_threshold"]
+            parameters[key] = float(block[key])
+        self._car_width = parameters["car_width"]
+        self._wheelbase = parameters["wheelbase"]
+        self._max_steer = parameters["max_steer"]
+        self._kp = parameters["kp"]
+        self._kd = parameters["kd"]
+        self._full_speed_distance = parameters["full_speed_distance"]
+        self._brake_distance = parameters["brake_distance"]
+        self._min_speed = parameters["min_speed"]
+        self._max_speed = parameters["max_speed"]
+        self._friction = parameters["friction"]
+        self._disparity_threshold = parameters["disparity_threshold"]
         self._last_angle = 0.0
 
     def reset(self, track_info: TrackInfo) -> None:

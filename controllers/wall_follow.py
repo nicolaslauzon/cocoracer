@@ -4,7 +4,7 @@ Reactive, laser-only: scan a forward sector, take the nearest hit, and
 hold `target_wall_distance` from that wall with a P/D controller on the
 heading error to the aim point (the hit, offset toward the track by the
 target gap). Speed is v_ref scaled down by |steering|, clamped to
-[0, v_ref]. No centerline is used. Every gain comes from the param
+[0, v_ref]. No centerline is used. Every parameter comes from the param
 file's baselines.wall_follow block, injected at load time.
 """
 
@@ -14,7 +14,7 @@ import numpy as np
 
 from cocoracer.controller import Controller, ControllerError, TrackInfo
 
-_GAINS = (
+_PARAMETERS = (
     "target_wall_distance",
     "kp",
     "kd",
@@ -35,18 +35,18 @@ class WallFollow(Controller):
             raise ControllerError(
                 "param file is missing the baselines.wall_follow block"
             )
-        gains: dict[str, float] = {}
-        for key in _GAINS:
+        parameters: dict[str, float] = {}
+        for key in _PARAMETERS:
             if key not in block:
                 raise ControllerError(f"baselines.wall_follow is missing key '{key}'")
-            gains[key] = float(block[key])
-        self._gap = gains["target_wall_distance"]
-        self._kp = gains["kp"]
-        self._kd = gains["kd"]
-        self._v_ref = gains["v_ref"]
-        self._speed_factor = gains["steer_speed_factor"]
+            parameters[key] = float(block[key])
+        self._gap = parameters["target_wall_distance"]
+        self._kp = parameters["kp"]
+        self._kd = parameters["kd"]
+        self._v_ref = parameters["v_ref"]
+        self._speed_factor = parameters["steer_speed_factor"]
         self._half_beams = max(
-            1, int(round(gains["sector_half_angle"] / math.degrees(_BEAM_ANGLE)))
+            1, int(round(parameters["sector_half_angle"] / math.degrees(_BEAM_ANGLE)))
         )
         self._prev_error = 0.0
 
