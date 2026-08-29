@@ -57,6 +57,7 @@ def _time_trial_argv(*extra: str) -> list[str]:
     ]
 
 
+@pytest.mark.slow
 def test_time_trial_stub_dnf_headless(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(_time_trial_argv("--no-web"))
     out = capsys.readouterr().out
@@ -120,6 +121,7 @@ def _send_start(port: int, done: threading.Event) -> None:
             time.sleep(0.05)
 
 
+@pytest.mark.slow
 def test_time_trial_live_starts_web_view_and_runs(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
@@ -192,6 +194,7 @@ def _race_argv(controller: str, params: Path = PARAMS) -> list[str]:
     ]
 
 
+@pytest.mark.slow
 def test_race_runs_two_controllers_headless_and_prints_results(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:

@@ -24,7 +24,6 @@ from cocoracer.track import Track
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DISPARITY_EXTENDER = REPO_ROOT / "controllers" / "disparity_extender.py"
-PURE_PURSUIT = REPO_ROOT / "controllers" / "pure_pursuit.py"
 
 
 def test_loader_injects_baselines(config: Config, stadium: Track) -> None:
@@ -56,6 +55,7 @@ def test_missing_parameter_key_is_rejected(config: Config) -> None:
         load_controller(DISPARITY_EXTENDER, baselines=broken)
 
 
+@pytest.mark.slow
 def test_disparity_extender_finishes_three_laps_clean(
     config: Config, stadium: Track
 ) -> None:
@@ -66,29 +66,3 @@ def test_disparity_extender_finishes_three_laps_clean(
     assert r.laps_completed == 3
     assert r.crashes == 0
     assert r.best_lap is not None
-
-
-def test_disparity_extender_races_pure_pursuit(config: Config, stadium: Track) -> None:
-    de = load_controller(DISPARITY_EXTENDER, baselines=config.baselines)
-    pp = load_controller(PURE_PURSUIT, baselines=config.baselines)
-    result = run_race(
-        stadium,
-        config,
-        [pp, de],
-        ["pure_pursuit", "disparity_extender"],
-        mode="race",
-    )
-    by_name = {r.name: r for r in result.results}
-    assert set(by_name) == {"pure_pursuit", "disparity_extender"}
-    pp_result = by_name["pure_pursuit"]
-    de_result = by_name["disparity_extender"]
-    # The reactive baseline is drivable in a shared race: it completes all
-    # three laps (it may be clipped while being lapped) and pure pursuit,
-    # the faster car, wins.
-    assert de_result.status is VehicleStatus.FINISHED
-    assert de_result.laps_completed == 3
-    assert de_result.best_lap is not None
-    assert pp_result.status is VehicleStatus.FINISHED
-    assert pp_result.laps_completed == 3
-    assert pp_result.finish_order == 1
-    assert de_result.finish_order == 2

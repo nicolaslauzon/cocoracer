@@ -245,6 +245,7 @@ def _fingerprint(result: RaceResult) -> tuple:
     )
 
 
+@pytest.mark.slow
 def test_live_tick_loop_matches_headless_run_race(
     stadium: Track, config: Config
 ) -> None:

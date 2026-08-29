@@ -71,3 +71,5 @@ pytest
 - Shared session-scoped fixtures live in `tests/conftest.py`.
 - Test behavior through the public API where possible; cover the error paths
   that raise `ConfigError` / `TrackError`.
+- The test map at `tests/MAP.md` lists every test that takes >20s, with the
+  source files it exercises.
