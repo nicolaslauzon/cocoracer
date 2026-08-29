@@ -57,18 +57,15 @@ function computeView() {
   let miny = Infinity;
   let maxx = -Infinity;
   let maxy = -Infinity;
-  for (const p of staticMsg.centerline) {
-    minx = Math.min(minx, p[0]);
-    maxx = Math.max(maxx, p[0]);
-    miny = Math.min(miny, p[1]);
-    maxy = Math.max(maxy, p[1]);
+  for (const key of ["centerline", "left_wall", "right_wall"]) {
+    for (const p of staticMsg[key]) {
+      minx = Math.min(minx, p[0]);
+      maxx = Math.max(maxx, p[0]);
+      miny = Math.min(miny, p[1]);
+      maxy = Math.max(maxy, p[1]);
+    }
   }
-  const g = staticMsg.grid;
-  minx = Math.min(minx, g.origin[0]);
-  miny = Math.min(miny, g.origin[1]);
-  maxx = Math.max(maxx, g.origin[0] + g.width * g.resolution);
-  maxy = Math.max(maxy, g.origin[1] + g.height * g.resolution);
-  const pad = staticMsg.track_width * 1.5;
+  const pad = Math.max(10, staticMsg.track_length * 0.02);
   minx -= pad;
   miny -= pad;
   maxx += pad;
@@ -97,24 +94,12 @@ function pathCenterline(t) {
   t.closePath();
 }
 
-function drawGrid(t) {
-  const g = staticMsg.grid;
-  const cell = g.resolution * view.scale;
-  t.fillStyle = "#46586e";
-  for (const [ix, iy] of g.occupied) {
-    const [sx, sy] = view.toPx(
-      g.origin[0] + (ix + 0.5) * g.resolution,
-      g.origin[1] + (iy + 0.5) * g.resolution
-    );
-    t.fillRect(sx - cell / 2, sy - cell / 2, cell + 0.5, cell + 0.5);
-  }
-}
-
 function drawRoad(t) {
+  // Placeholder stroke: the wall-bounded road fill replaces it later.
   t.lineJoin = "round";
   t.lineCap = "round";
   t.strokeStyle = "#252c36";
-  t.lineWidth = staticMsg.track_width * view.scale;
+  t.lineWidth = 12;
   pathCenterline(t);
   t.stroke();
   t.strokeStyle = "rgba(232, 236, 241, 0.35)";
@@ -127,11 +112,8 @@ function drawRoad(t) {
 
 function drawStartLine(t) {
   const sl = staticMsg.start_line;
-  const half = staticMsg.track_width / 2;
-  const dx = Math.cos(sl.yaw + Math.PI / 2) * half;
-  const dy = Math.sin(sl.yaw + Math.PI / 2) * half;
-  const [ax, ay] = view.toPx(sl.x + dx, sl.y + dy);
-  const [bx, by] = view.toPx(sl.x - dx, sl.y - dy);
+  const [ax, ay] = view.toPx(sl.left[0], sl.left[1]);
+  const [bx, by] = view.toPx(sl.right[0], sl.right[1]);
   t.strokeStyle = "#ffffff";
   t.lineWidth = Math.max(2, 0.1 * view.scale);
   t.beginPath();
@@ -146,15 +128,14 @@ function prerenderTrack() {
   trackLayer.width = canvas.width;
   trackLayer.height = canvas.height;
   const t = trackLayer.getContext("2d");
-  drawGrid(t);
   drawRoad(t);
   drawStartLine(t);
 }
 
 function drawCar(v) {
   const [cx, cy] = view.toPx(v.x, v.y);
-  const len = Math.max(8, 1.4 * view.scale);
-  const wid = Math.max(4, 0.7 * view.scale);
+  const len = Math.max(8, staticMsg.vehicle.length * view.scale);
+  const wid = Math.max(4, staticMsg.vehicle.width * view.scale);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-v.yaw);
