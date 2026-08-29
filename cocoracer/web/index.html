@@ -94,14 +94,22 @@ function pathCenterline(t) {
   t.closePath();
 }
 
+function pathWalls(t) {
+  for (const key of ["left_wall", "right_wall"]) {
+    staticMsg[key].forEach((p, i) => {
+      const [sx, sy] = view.toPx(p[0], p[1]);
+      if (i === 0) t.moveTo(sx, sy);
+      else t.lineTo(sx, sy);
+    });
+    t.closePath();
+  }
+}
+
 function drawRoad(t) {
-  // Placeholder stroke: the wall-bounded road fill replaces it later.
-  t.lineJoin = "round";
-  t.lineCap = "round";
-  t.strokeStyle = "#252c36";
-  t.lineWidth = 12;
-  pathCenterline(t);
-  t.stroke();
+  t.beginPath();
+  pathWalls(t);
+  t.fillStyle = "#252c36";
+  t.fill("evenodd");
   t.strokeStyle = "rgba(232, 236, 241, 0.35)";
   t.lineWidth = Math.max(1, 0.06 * view.scale);
   t.setLineDash([0.4 * view.scale, 0.4 * view.scale]);
