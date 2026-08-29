@@ -96,6 +96,12 @@ def test_index_html_draws_car_bodies_as_rectangles() -> None:
     assert "fillRect" in html
 
 
+def test_index_html_keeps_trails_client_side(stadium: Track) -> None:
+    html = _index_html()
+    assert "drawTrails" in html
+    assert "trail" not in _dynamic_field_names(stadium)
+
+
 def test_index_html_colors_every_vehicle_status() -> None:
     html = _index_html()
     for status in VehicleStatus:

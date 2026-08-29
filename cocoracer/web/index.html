@@ -50,6 +50,7 @@ let staticMsg = null;
 let dynamicMsg = null;
 let trackLayer = null;
 let view = null;
+let trails = {};
 
 function computeView() {
   if (!staticMsg) return null;
@@ -162,11 +163,89 @@ function drawCar(v) {
   ctx.restore();
 }
 
+function trailWindow() {
+  return staticMsg.track_length / 2;
+}
+
+function updateTrails(msg) {
+  const win = trailWindow();
+  for (const v of msg.vehicles) {
+    let tr = trails[v.id];
+    if (!tr) tr = (trails[v.id] = { dist: 0, points: [], marks: [], crashes: 0 });
+    const crashed = v.crashes > tr.crashes;
+    tr.crashes = v.crashes;
+    const last = tr.points.length ? tr.points[tr.points.length - 1] : null;
+    if (crashed) {
+      tr.marks.push({ x: v.x, y: v.y, d: tr.dist });
+    } else if (last) {
+      tr.dist += Math.hypot(v.x - last.x, v.y - last.y);
+    }
+    tr.points.push({ x: v.x, y: v.y, d: tr.dist, b: !last || crashed });
+    const cut = tr.dist - win;
+    while (tr.points.length && tr.points[0].d < cut) tr.points.shift();
+    for (let i = tr.marks.length - 1; i >= 0; i--) {
+      if (tr.marks[i].d < cut) tr.marks.splice(i, 1);
+    }
+  }
+}
+
+function drawTrails() {
+  const win = trailWindow();
+  for (const v of dynamicMsg.vehicles) {
+    const tr = trails[v.id];
+    if (!tr || tr.points.length < 2) continue;
+    const base = Math.max(0, tr.dist - win);
+    ctx.strokeStyle = COLORS[v.status] ?? "#ffffff";
+    ctx.lineWidth = Math.max(1, 0.2 * view.scale);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    for (let i = 1; i < tr.points.length; i++) {
+      const a = tr.points[i - 1];
+      const b = tr.points[i];
+      if (b.b) continue;
+      ctx.globalAlpha = Math.min(1, (b.d - base) / win) * 0.9;
+      const [ax, ay] = view.toPx(a.x, a.y);
+      const [bx, by] = view.toPx(b.x, b.y);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCrashMarks() {
+  const win = trailWindow();
+  const r = Math.max(4, 0.3 * view.scale);
+  ctx.strokeStyle = "#ff5555";
+  ctx.lineWidth = Math.max(1.5, 0.08 * view.scale);
+  ctx.lineCap = "round";
+  for (const v of dynamicMsg.vehicles) {
+    const tr = trails[v.id];
+    if (!tr) continue;
+    const base = Math.max(0, tr.dist - win);
+    for (const m of tr.marks) {
+      const [mx, my] = view.toPx(m.x, m.y);
+      ctx.globalAlpha = Math.min(1, (m.d - base) / win);
+      ctx.beginPath();
+      ctx.moveTo(mx - r, my - r);
+      ctx.lineTo(mx + r, my + r);
+      ctx.moveTo(mx + r, my - r);
+      ctx.lineTo(mx - r, my + r);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
 function draw() {
   if (!staticMsg || !view) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (trackLayer) ctx.drawImage(trackLayer, 0, 0);
   if (!dynamicMsg) return;
+  drawTrails();
+  drawCrashMarks();
   for (const v of dynamicMsg.vehicles) drawCar(v);
 }
 
@@ -231,9 +310,11 @@ ws.onmessage = (ev) => {
   const msg = JSON.parse(ev.data);
   if (msg.type === "static") {
     staticMsg = msg;
+    trails = {};
     fit();
   } else if (msg.type === "dynamic") {
     dynamicMsg = msg;
+    updateTrails(msg);
     refreshHud();
     draw();
   }
