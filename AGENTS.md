@@ -27,7 +27,7 @@ The test suite has two tiers:
 - **Fast** (~30s): unit + integration tests. Covers parsers, geometry, config, collision math, sensor ray-casting, protocol serialization, state machines, and engine seams. Run on every change.
 - **Slow** (~9.5min): full-race E2E tests. Covers baseline controller completion, engine correctness under race conditions, CLI end-to-end, and performance budgets. Run when touching engine, vehicle, collision, or baseline controller code.
 
-The test map at `tests/MAP.md` lists every test with what it covers, which source files it exercises, and its wall-clock cost. Consult it to decide which tests to run.
+The test map at `tests/MAP.md` lists every test that takes >20s, with the source files it exercises. Consult it to decide which tests to run.
 
 Before committing:
 
