@@ -17,7 +17,15 @@ def _write_params(tmp_path: Path, body: str) -> Path:
 def test_default_config_loads() -> None:
     cfg = load_config(PARAMS)
     assert cfg.default_track == "stadium"
-    assert set(cfg.tracks) == {"stadium", "montreal", "spa", "silverstone"}
+    assert set(cfg.tracks) == {
+        "stadium",
+        "montreal",
+        "spa",
+        "silverstone",
+        "right-interior",
+        "icra-2023-short",
+        "icra-2025",
+    }
 
 
 def test_race_block_has_no_grid_spacing() -> None:
@@ -344,6 +352,17 @@ def test_map_track_declared_twice_is_error(tmp_path: Path) -> None:
         load_config(path)
 
 
-def test_default_params_have_no_map_tracks() -> None:
+def test_default_params_have_the_three_map_tracks() -> None:
     cfg = load_config(PARAMS)
-    assert all(spec.map is None for spec in cfg.tracks.values())
+    expected = {
+        "right-interior": ("right-interior.pgm", "ccw", (378, 359)),
+        "icra-2023-short": ("race_f1tenth_icra_2023_short.pgm", "ccw", (82, 189)),
+        "icra-2025": ("icra-2025.pgm", "cw", (366, 23)),
+    }
+    for name, (base, direction, start) in expected.items():
+        spec = cfg.tracks[name].map
+        assert spec is not None
+        assert spec.image.resolve() == (PARAMS.parent.parent / "maps" / base).resolve()
+        assert spec.direction == direction
+        assert spec.start == start
+        assert spec.scale == 0.6

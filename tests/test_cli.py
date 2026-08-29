@@ -68,6 +68,42 @@ def test_time_trial_stub_dnf_headless(capsys: pytest.CaptureFixture[str]) -> Non
     assert "race time:" in out
 
 
+def _temp_params(tmp_path: Path, time_limit: float) -> Path:
+    # Track and map paths are relative to the param file, so mirror the
+    # repo layout (params/ beside maps/ and tracks/) under a temp dir.
+    (tmp_path / "params").mkdir()
+    shutil.copytree(PARAMS.parent / "tracks", tmp_path / "params" / "tracks")
+    shutil.copytree(REPO_ROOT / "maps", tmp_path / "maps")
+    text = PARAMS.read_text().replace("time_limit: 600.0", f"time_limit: {time_limit}")
+    assert text != PARAMS.read_text()
+    path = tmp_path / "params" / "params.yaml"
+    path.write_text(text)
+    return path
+
+
+@pytest.mark.parametrize(
+    "track_name", ("right-interior", "icra-2023-short", "icra-2025")
+)
+def test_time_trial_ticks_cleanly_on_map_track(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, track_name: str
+) -> None:
+    argv = [
+        "--params",
+        str(_temp_params(tmp_path, 5.0)),
+        "time-trial",
+        "--track",
+        track_name,
+        "--controller",
+        str(REPO_ROOT / "controllers" / "starter.py"),
+        "--no-web",
+    ]
+    rc = main(argv)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert f"results ({track_name}):" in out
+    assert "race time:" in out
+
+
 def _send_start(port: int, done: threading.Event) -> None:
     """Connect to the live view and release the field with a start message."""
     deadline = time.monotonic() + 15.0
@@ -88,11 +124,7 @@ def test_time_trial_live_starts_web_view_and_runs(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     # A short time limit ends the stub's race fast in wall-clock pace.
-    shutil.copytree(PARAMS.parent / "tracks", tmp_path / "tracks")
-    short = tmp_path / "params.yaml"
-    text = PARAMS.read_text().replace("time_limit: 600.0", "time_limit: 4.0")
-    assert text != PARAMS.read_text()
-    short.write_text(text)
+    short = _temp_params(tmp_path, 4.0)
     port = _free_port()
     argv = _time_trial_argv("--port", str(port))
     argv[argv.index("--params") + 1] = str(short)
@@ -165,11 +197,7 @@ def test_race_runs_two_controllers_headless_and_prints_results(
 ) -> None:
     # A short time limit ends the race fast: both stubs crash into the
     # wall on every pass and neither finishes.
-    shutil.copytree(PARAMS.parent / "tracks", tmp_path / "tracks")
-    short = tmp_path / "params.yaml"
-    text = PARAMS.read_text().replace("time_limit: 600.0", "time_limit: 8.0")
-    assert text != PARAMS.read_text()
-    short.write_text(text)
+    short = _temp_params(tmp_path, 8.0)
     rc = main(_race_argv(f"{STUB},{STUB}", short))
     out = capsys.readouterr().out
     assert rc == 0
