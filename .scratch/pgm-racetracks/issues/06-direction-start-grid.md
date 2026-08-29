@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] A synthetic map builds end to end: three files → Frenet-ready track with derived walls and the drivable mask (upsampled 2×, 0.3 m cells) as the occupancy grid
-- [ ] Direction key is honored: reversing it reverses the centerline and swaps the left/right walls
-- [ ] Start line lands at the configured pixel (nearest centerline point at s=0) with the correct heading; checkpoint at length/2
-- [ ] `maps` config section loads: defaults apply, per-track overrides win, a map track without a direction key or a start key is a config error
-- [ ] The four checks are green
+- [x] A synthetic map builds end to end: three files → Frenet-ready track with derived walls and the drivable mask (upsampled 2×, 0.3 m cells) as the occupancy grid
+- [x] Direction key is honored: reversing it reverses the centerline and swaps the left/right walls
+- [x] Start line lands at the configured pixel (nearest centerline point at s=0) with the correct heading; checkpoint at length/2
+- [x] `maps` config section loads: defaults apply, per-track overrides win, a map track without a direction key or a start key is a config error
+- [x] The four checks are green
