@@ -7,6 +7,7 @@
 **Status:** ready-for-agent
 
 - [ ] The importer module, its tests, the vendored geodata and source note, the three F1 JSONs, their param entries, and the F1 fixture are deleted
+- [ ] `rotate_to_straightest_start` and `_segment_turns` in the track module are deleted with their tests (the F1 importer was their only user; map starts are pixel-specified)
 - [ ] No reference to F1 or the geodata remains in the codebase
 - [ ] The default track is `icra-2023-short`; CLI and README examples use the new track names
 - [ ] A new ADR records the PGM import, the ~0.6 m/px scale, and the one-eighth vehicle rule
