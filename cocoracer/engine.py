@@ -1,8 +1,8 @@
 """Deterministic headless race engine.
 
 One single-threaded fixed-step loop (40 Hz). In race mode the field
-starts on a staggered grid behind the start/finish line and holds
-while the countdown runs; when the countdown ends the lap trackers
+starts on a hardcoded F1-style zigzag grid behind the start/finish
+line and holds while the countdown runs; when the countdown ends the lap trackers
 re-anchor at the grid poses, so the first lap is timed from the
 release. Per tick, in order: the controllers that may be stepped
 (racing and ghost) are each handed a fresh full-circle laser scan —
@@ -35,6 +35,8 @@ from cocoracer.vehicle import Vehicle
 
 _TERMINAL = (VehicleStatus.FINISHED, VehicleStatus.DNF)
 _MODES = ("time-trial", "race")
+_GRID_ROW = 3.75
+_GRID_OFFSET = 2.5
 
 
 @dataclass
@@ -122,7 +124,6 @@ class RaceEngine:
         self._max_crashes = config.race.max_crashes
         self._beam_angles = config.sensor.beam_angles
         self._collision_distance = config.race.collision_distance
-        self._grid_spacing = config.race.grid_spacing
         self._countdown_left = (
             int(round(config.race.countdown / self._dt)) if mode == "race" else 0
         )
@@ -163,9 +164,15 @@ class RaceEngine:
 
     def _grid_pose(self, index: int) -> tuple[float, float, float]:
         s = (
-            self.track.track_length - (index + 1) * self._grid_spacing
+            self.track.track_length - (index + 1) * _GRID_ROW
         ) % self.track.track_length
-        return self.track.to_cartesian(s, 0.0)
+        if index == 0:
+            lateral = 0.0
+        elif index % 2 == 1:
+            lateral = -_GRID_OFFSET
+        else:
+            lateral = _GRID_OFFSET
+        return self.track.to_cartesian(s, lateral)
 
     def _release(self) -> None:
         """Re-anchor the lap trackers at the grid poses on release."""
@@ -353,8 +360,8 @@ def run_race(
 
     The deterministic entry point of the engine: no wall clock, no
     threads, no web. In time-trial mode every vehicle starts at the
-    track's start pose; in race mode the field starts on the staggered
-    grid behind the start/finish line and is released after the
+    track's start pose; in race mode the field starts on the hardcoded
+    zigzag grid behind the start/finish line and is released after the
     countdown.
     """
     return RaceEngine(track, config, controllers, names, mode=mode).run()

@@ -20,6 +20,30 @@ def test_default_config_loads() -> None:
     assert set(cfg.tracks) == {"stadium", "montreal", "spa", "silverstone"}
 
 
+def test_race_block_has_no_grid_spacing() -> None:
+    cfg = load_config(PARAMS)
+    assert not hasattr(cfg.race, "grid_spacing")
+
+
+def test_legacy_grid_spacing_key_is_ignored(tmp_path: Path) -> None:
+    path = _write_params(
+        tmp_path,
+        "race:\n"
+        "  grid_spacing: 3.75\n"
+        "tracks:\n"
+        "  t1:\n"
+        "    width: 1.0\n"
+        "    resolution: 0.1\n"
+        "    centerline:\n"
+        "      - [0.0, 0.0]\n"
+        "      - [1.0, 0.0]\n"
+        "      - [1.0, 1.0]\n"
+        "      - [0.0, 1.0]\n",
+    )
+    cfg = load_config(path)
+    assert not hasattr(cfg.race, "grid_spacing")
+
+
 def test_segment_track_has_no_centerline() -> None:
     stadium = load_config(PARAMS).tracks["stadium"]
     assert stadium.segments is not None

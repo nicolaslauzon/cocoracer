@@ -550,18 +550,42 @@ def test_run_releases_a_waiting_engine(stadium: Track, config: Config) -> None:
     assert 1.0 <= result.time < 1.05
 
 
-def test_race_mode_starts_on_staggered_grid(stadium: Track, config: Config) -> None:
-    drivers: list[Controller] = [StepCounter(2.0) for _ in range(3)]
-    engine = RaceEngine(stadium, config, drivers, ["a", "b", "c"], mode="race")
-    spacing = config.race.grid_spacing
-    length = stadium.track_length
+# The hardcoded F1 zigzag: pole on the centerline 3.75 m behind the
+# line, then 2.5 m right, left, right, ... at 3.75 m rows.
+_ZIGZAG_ROWS = 3.75
+_ZIGZAG_LATERAL = (0.0, -2.5, 2.5, -2.5, 2.5)
+
+
+def _assert_zigzag(track: Track, engine: RaceEngine) -> None:
+    length = track.track_length
     for i, v in enumerate(engine.vehicles):
-        s, d, dyaw = stadium.to_frenet(v.x, v.y, v.yaw)
-        assert s == pytest.approx((length - (i + 1) * spacing) % length, abs=1e-3)
-        assert abs(d) < 1e-3
+        s, d, dyaw = track.to_frenet(v.x, v.y, v.yaw)
+        # 1 cm: the Frenet roundtrip of an off-centerline pose loses up
+        # to ~2 mm of arc length on the stadium's spline arcs.
+        assert s == pytest.approx((length - (i + 1) * _ZIGZAG_ROWS) % length, abs=0.01)
+        assert d == pytest.approx(_ZIGZAG_LATERAL[i], abs=1e-3)
         assert abs(dyaw) < 1e-3
         assert v.speed == 0.0
         assert v.target_speed == 0.0
+
+
+def test_race_mode_starts_on_zigzag_grid(stadium: Track, config: Config) -> None:
+    drivers: list[Controller] = [StepCounter(2.0) for _ in range(5)]
+    engine = RaceEngine(
+        stadium, config, drivers, [f"v{i}" for i in range(5)], mode="race"
+    )
+    _assert_zigzag(stadium, engine)
+
+
+def test_zigzag_grid_is_identical_on_other_tracks(
+    f1_tracks: dict[str, Track], config: Config
+) -> None:
+    track = f1_tracks["montreal"]
+    drivers: list[Controller] = [StepCounter(2.0) for _ in range(5)]
+    engine = RaceEngine(
+        track, config, drivers, [f"v{i}" for i in range(5)], mode="race"
+    )
+    _assert_zigzag(track, engine)
 
 
 def test_countdown_holds_vehicles_still_and_silent(
@@ -587,7 +611,7 @@ def test_countdown_holds_vehicles_still_and_silent(
 
 def test_lap_timing_starts_at_countdown_end(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
-    grid_s = stadium.track_length - config.race.grid_spacing
+    grid_s = stadium.track_length - _ZIGZAG_ROWS
     result = run_race(
         stadium, config, [StadiumDriver(20.0, s0=grid_s)], ["runner"], mode="race"
     )
@@ -606,10 +630,7 @@ def test_lap_timing_starts_at_countdown_end(stadium: Track, config: Config) -> N
     accel = config.vehicle.max_accel
     ramp_time = speed / accel
     ramp_dist = 0.5 * accel * ramp_time * ramp_time
-    expected = (
-        ramp_time
-        + (stadium.track_length + config.race.grid_spacing - ramp_dist) / speed
-    )
+    expected = ramp_time + (stadium.track_length + _ZIGZAG_ROWS - ramp_dist) / speed
     assert r.last_lap == pytest.approx(expected, abs=0.5)
 
 
@@ -660,7 +681,7 @@ def test_race_ends_on_timeout_with_dnfs_ranked_last(
     config = dataclasses.replace(
         config, race=dataclasses.replace(config.race, laps=1, time_limit=30.0)
     )
-    grid_s = stadium.track_length - config.race.grid_spacing
+    grid_s = stadium.track_length - _ZIGZAG_ROWS
     engine = RaceEngine(
         stadium,
         config,
@@ -694,8 +715,7 @@ def test_race_ranks_two_finishers_by_finish_time(
 ) -> None:
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
     length = stadium.track_length
-    spacing = config.race.grid_spacing
-    grids = [(length - (i + 1) * spacing) % length for i in range(2)]
+    grids = [(length - (i + 1) * _ZIGZAG_ROWS) % length for i in range(2)]
     result = run_race(
         stadium,
         config,

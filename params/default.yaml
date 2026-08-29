@@ -28,7 +28,6 @@ race:
   collision_distance: 2.5
   max_crashes: 5
   countdown: 3.0
-  grid_spacing: 3.75
 
 tracks:
   stadium:

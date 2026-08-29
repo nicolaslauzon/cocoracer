@@ -64,7 +64,6 @@ class RaceConfig:
     collision_distance: float = 2.5
     max_crashes: int = 5
     countdown: float = 3.0
-    grid_spacing: float = 3.75
 
 
 @dataclass
@@ -201,7 +200,6 @@ def load_config(path: Path | str) -> Config:
         collision_distance=float(race_raw.get("collision_distance", 2.5)),
         max_crashes=int(race_raw.get("max_crashes", 5)),
         countdown=float(race_raw.get("countdown", 3.0)),
-        grid_spacing=float(race_raw.get("grid_spacing", 3.75)),
     )
 
     tracks_raw = _require(raw, "tracks", "root")
