@@ -73,11 +73,7 @@ def test_live_run_waits_for_start_message(stadium: Track, config: Config) -> Non
     )
     loop_started = False
     try:
-        # 32 MiB: the stadium's static message carries the full occupancy
-        # grid, above websockets' 1 MiB default client limit.
-        with websockets.sync.client.connect(
-            f"ws://127.0.0.1:{port}/ws", max_size=32 * 1024 * 1024
-        ) as ws:
+        with websockets.sync.client.connect(f"ws://127.0.0.1:{port}/ws") as ws:
             static = json.loads(ws.recv())
             assert static["type"] == "static"
             first = json.loads(ws.recv())

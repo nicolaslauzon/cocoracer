@@ -47,7 +47,7 @@ def create_app(engine: RaceEngine, start_queue: queue.Queue[None]) -> FastAPI:
     @app.websocket("/ws")
     async def stream(websocket: WebSocket) -> None:
         await websocket.accept()
-        await websocket.send_text(build_static_message(engine.track))
+        await websocket.send_text(build_static_message(engine.track, engine.config))
         try:
             while True:
                 try:
