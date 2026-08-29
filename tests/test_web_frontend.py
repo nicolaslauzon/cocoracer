@@ -91,6 +91,11 @@ def test_index_html_covers_dynamic_protocol_fields(stadium: Track) -> None:
     assert not missing
 
 
+def test_index_html_draws_car_bodies_as_rectangles() -> None:
+    html = _index_html()
+    assert "fillRect" in html
+
+
 def test_index_html_colors_every_vehicle_status() -> None:
     html = _index_html()
     for status in VehicleStatus:

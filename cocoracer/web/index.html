@@ -144,17 +144,21 @@ function drawCar(v) {
   const [cx, cy] = view.toPx(v.x, v.y);
   const len = Math.max(8, staticMsg.vehicle.length * view.scale);
   const wid = Math.max(4, staticMsg.vehicle.width * view.scale);
+  const wheel = Math.max(1.5, wid * 0.3);
+  const inset = Math.max(1.5, len * 0.15);
+  const winW = Math.max(2, len * 0.18);
+  const winH = Math.max(2, wid * 0.55);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-v.yaw);
   ctx.globalAlpha = ALPHAS[v.status] ?? 1;
-  ctx.strokeStyle = COLORS[v.status] ?? "#ffffff";
-  ctx.lineWidth = wid;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(-len / 2, 0);
-  ctx.lineTo(len / 2, 0);
-  ctx.stroke();
+  ctx.fillStyle = COLORS[v.status] ?? "#ffffff";
+  ctx.fillRect(-len / 2, -wid / 2, len, wid);
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(len / 2 - inset - wheel / 2, -wid / 2 - wheel / 2, wheel, wid + wheel);
+  ctx.fillRect(-len / 2 + inset - wheel / 2, -wid / 2 - wheel / 2, wheel, wid + wheel);
+  ctx.fillStyle = "#8a94a3";
+  ctx.fillRect(len / 2 - inset - winW, -winH / 2, winW, winH);
   ctx.restore();
 }
 
