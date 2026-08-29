@@ -96,6 +96,18 @@ def test_index_html_draws_car_bodies_as_rectangles() -> None:
     assert "fillRect" in html
 
 
+def test_index_html_has_start_button() -> None:
+    html = _index_html()
+    assert "<button" in html
+    assert 'id="start"' in html
+
+
+def test_index_html_sends_the_start_message() -> None:
+    html = _index_html()
+    assert "ws.send" in html
+    assert 'type: "start"' in html
+
+
 def test_index_html_keeps_trails_client_side(stadium: Track) -> None:
     html = _index_html()
     assert "drawTrails" in html

@@ -15,6 +15,16 @@
     padding: 8px 10px; border-radius: 6px;
     pointer-events: none;
   }
+  #start {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font: 700 28px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #10141a;
+    background: #ffd43b;
+    border: none; border-radius: 8px;
+    padding: 16px 44px;
+    cursor: pointer;
+  }
   #countdown {
     position: fixed; top: 38%; left: 50%;
     transform: translate(-50%, -50%);
@@ -29,6 +39,7 @@
 <canvas id="view"></canvas>
 <pre id="hud">connecting…</pre>
 <div id="countdown" hidden></div>
+<button id="start" hidden>Start</button>
 <script>
 "use strict";
 
@@ -36,6 +47,7 @@ const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
 const countdownEl = document.getElementById("countdown");
+const startBtn = document.getElementById("start");
 
 const COLORS = {
   racing: "#4da3ff",
@@ -290,6 +302,7 @@ function refreshHud() {
   } else {
     countdownEl.hidden = true;
   }
+  startBtn.hidden = !dynamicMsg || dynamicMsg.phase !== "waiting";
 }
 
 function fit() {
@@ -301,6 +314,12 @@ function fit() {
 }
 
 window.addEventListener("resize", fit);
+
+startBtn.addEventListener("click", () => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "start" }));
+  }
+});
 
 const ws = new WebSocket(
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"
