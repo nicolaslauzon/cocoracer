@@ -15,6 +15,16 @@
     padding: 8px 10px; border-radius: 6px;
     pointer-events: none;
   }
+  #start {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font: 700 28px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #10141a;
+    background: #ffd43b;
+    border: none; border-radius: 8px;
+    padding: 16px 44px;
+    cursor: pointer;
+  }
   #countdown {
     position: fixed; top: 38%; left: 50%;
     transform: translate(-50%, -50%);
@@ -29,6 +39,7 @@
 <canvas id="view"></canvas>
 <pre id="hud">connecting…</pre>
 <div id="countdown" hidden></div>
+<button id="start" hidden>Start</button>
 <script>
 "use strict";
 
@@ -36,6 +47,7 @@ const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
 const countdownEl = document.getElementById("countdown");
+const startBtn = document.getElementById("start");
 
 const COLORS = {
   racing: "#4da3ff",
@@ -50,6 +62,7 @@ let staticMsg = null;
 let dynamicMsg = null;
 let trackLayer = null;
 let view = null;
+let trails = {};
 
 function computeView() {
   if (!staticMsg) return null;
@@ -94,14 +107,22 @@ function pathCenterline(t) {
   t.closePath();
 }
 
+function pathWalls(t) {
+  for (const key of ["left_wall", "right_wall"]) {
+    staticMsg[key].forEach((p, i) => {
+      const [sx, sy] = view.toPx(p[0], p[1]);
+      if (i === 0) t.moveTo(sx, sy);
+      else t.lineTo(sx, sy);
+    });
+    t.closePath();
+  }
+}
+
 function drawRoad(t) {
-  // Placeholder stroke: the wall-bounded road fill replaces it later.
-  t.lineJoin = "round";
-  t.lineCap = "round";
-  t.strokeStyle = "#252c36";
-  t.lineWidth = 12;
-  pathCenterline(t);
-  t.stroke();
+  t.beginPath();
+  pathWalls(t);
+  t.fillStyle = "#252c36";
+  t.fill("evenodd");
   t.strokeStyle = "rgba(232, 236, 241, 0.35)";
   t.lineWidth = Math.max(1, 0.06 * view.scale);
   t.setLineDash([0.4 * view.scale, 0.4 * view.scale]);
@@ -136,18 +157,98 @@ function drawCar(v) {
   const [cx, cy] = view.toPx(v.x, v.y);
   const len = Math.max(8, staticMsg.vehicle.length * view.scale);
   const wid = Math.max(4, staticMsg.vehicle.width * view.scale);
+  const wheel = Math.max(1.5, wid * 0.3);
+  const inset = Math.max(1.5, len * 0.15);
+  const winW = Math.max(2, len * 0.18);
+  const winH = Math.max(2, wid * 0.55);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-v.yaw);
   ctx.globalAlpha = ALPHAS[v.status] ?? 1;
-  ctx.strokeStyle = COLORS[v.status] ?? "#ffffff";
-  ctx.lineWidth = wid;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(-len / 2, 0);
-  ctx.lineTo(len / 2, 0);
-  ctx.stroke();
+  ctx.fillStyle = COLORS[v.status] ?? "#ffffff";
+  ctx.fillRect(-len / 2, -wid / 2, len, wid);
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(len / 2 - inset - wheel / 2, -wid / 2 - wheel / 2, wheel, wid + wheel);
+  ctx.fillRect(-len / 2 + inset - wheel / 2, -wid / 2 - wheel / 2, wheel, wid + wheel);
+  ctx.fillStyle = "#8a94a3";
+  ctx.fillRect(len / 2 - inset - winW, -winH / 2, winW, winH);
   ctx.restore();
+}
+
+function trailWindow() {
+  return staticMsg.track_length / 2;
+}
+
+function updateTrails(msg) {
+  const win = trailWindow();
+  for (const v of msg.vehicles) {
+    let tr = trails[v.id];
+    if (!tr) tr = (trails[v.id] = { dist: 0, points: [], marks: [], crashes: 0 });
+    const crashed = v.crashes > tr.crashes;
+    tr.crashes = v.crashes;
+    const last = tr.points.length ? tr.points[tr.points.length - 1] : null;
+    if (crashed) {
+      tr.marks.push({ x: v.x, y: v.y, d: tr.dist });
+    } else if (last) {
+      tr.dist += Math.hypot(v.x - last.x, v.y - last.y);
+    }
+    tr.points.push({ x: v.x, y: v.y, d: tr.dist, b: !last || crashed });
+    const cut = tr.dist - win;
+    while (tr.points.length && tr.points[0].d < cut) tr.points.shift();
+    for (let i = tr.marks.length - 1; i >= 0; i--) {
+      if (tr.marks[i].d < cut) tr.marks.splice(i, 1);
+    }
+  }
+}
+
+function drawTrails() {
+  const win = trailWindow();
+  for (const v of dynamicMsg.vehicles) {
+    const tr = trails[v.id];
+    if (!tr || tr.points.length < 2) continue;
+    const base = Math.max(0, tr.dist - win);
+    ctx.strokeStyle = COLORS[v.status] ?? "#ffffff";
+    ctx.lineWidth = Math.max(1, 0.2 * view.scale);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    for (let i = 1; i < tr.points.length; i++) {
+      const a = tr.points[i - 1];
+      const b = tr.points[i];
+      if (b.b) continue;
+      ctx.globalAlpha = Math.min(1, (b.d - base) / win) * 0.9;
+      const [ax, ay] = view.toPx(a.x, a.y);
+      const [bx, by] = view.toPx(b.x, b.y);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCrashMarks() {
+  const win = trailWindow();
+  const r = Math.max(4, 0.3 * view.scale);
+  ctx.strokeStyle = "#ff5555";
+  ctx.lineWidth = Math.max(1.5, 0.08 * view.scale);
+  ctx.lineCap = "round";
+  for (const v of dynamicMsg.vehicles) {
+    const tr = trails[v.id];
+    if (!tr) continue;
+    const base = Math.max(0, tr.dist - win);
+    for (const m of tr.marks) {
+      const [mx, my] = view.toPx(m.x, m.y);
+      ctx.globalAlpha = Math.min(1, (m.d - base) / win);
+      ctx.beginPath();
+      ctx.moveTo(mx - r, my - r);
+      ctx.lineTo(mx + r, my + r);
+      ctx.moveTo(mx + r, my - r);
+      ctx.lineTo(mx - r, my + r);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 function draw() {
@@ -155,6 +256,8 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (trackLayer) ctx.drawImage(trackLayer, 0, 0);
   if (!dynamicMsg) return;
+  drawTrails();
+  drawCrashMarks();
   for (const v of dynamicMsg.vehicles) drawCar(v);
 }
 
@@ -199,6 +302,7 @@ function refreshHud() {
   } else {
     countdownEl.hidden = true;
   }
+  startBtn.hidden = !dynamicMsg || dynamicMsg.phase !== "waiting";
 }
 
 function fit() {
@@ -211,6 +315,12 @@ function fit() {
 
 window.addEventListener("resize", fit);
 
+startBtn.addEventListener("click", () => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "start" }));
+  }
+});
+
 const ws = new WebSocket(
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"
 );
@@ -219,9 +329,11 @@ ws.onmessage = (ev) => {
   const msg = JSON.parse(ev.data);
   if (msg.type === "static") {
     staticMsg = msg;
+    trails = {};
     fit();
   } else if (msg.type === "dynamic") {
     dynamicMsg = msg;
+    updateTrails(msg);
     refreshHud();
     draw();
   }
