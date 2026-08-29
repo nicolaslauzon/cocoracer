@@ -8,9 +8,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] CSV + YAML parse: native meters converted to track world (corner origin, y-up, × scale/resolution)
-- [ ] Wall curves are pointwise normal offsets of the resampled centerline; median wall-to-wall distance ≈ scaled `w_left + w_right`
-- [ ] Sampled wall points sit on the mask boundary within tolerance and the corridor is drivable per the mask; a mismatched synthetic map (temp dir) is a track error
-- [ ] A malformed CSV is a track error with a clear message
-- [ ] All three shipped maps' centerlines derive walls that pass the mask consistency check
-- [ ] The four checks are green
+- [x] CSV + YAML parse: native meters converted to track world (corner origin, y-up, × scale/resolution)
+- [x] Wall curves are pointwise normal offsets of the resampled centerline; median wall-to-wall distance ≈ scaled `w_left + w_right`
+- [x] Sampled wall points sit on the mask boundary within tolerance and the corridor is drivable per the mask; a mismatched synthetic map (temp dir) is a track error
+- [x] A malformed CSV is a track error with a clear message
+- [x] All three shipped maps' centerlines derive walls that pass the mask consistency check
+- [x] The four checks are green
