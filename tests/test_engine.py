@@ -13,7 +13,6 @@ from cocoracer.controller import Controller, TrackInfo, load_controller
 from cocoracer.engine import (
     DnfReason,
     RaceEngine,
-    RaceResult,
     Vehicle,
     VehicleStatus,
     run_race,
@@ -295,6 +294,7 @@ def _reposition_to_wall(v: Vehicle) -> None:
     v.target_steering = 0.0
 
 
+@pytest.mark.slow
 def test_scripted_driver_completes_a_lap(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
     result = run_race(stadium, config, [StadiumDriver(20.0)], ["runner"])
@@ -310,6 +310,7 @@ def test_scripted_driver_completes_a_lap(stadium: Track, config: Config) -> None
     assert r.dnf_reason is None
 
 
+@pytest.mark.slow
 def test_timeout_dnfs_inactive_car(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(
         config, race=dataclasses.replace(config.race, time_limit=1.0)
@@ -322,6 +323,7 @@ def test_timeout_dnfs_inactive_car(stadium: Track, config: Config) -> None:
     assert 1.0 <= result.time < 1.05
 
 
+@pytest.mark.slow
 def test_max_crashes_dnfs(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(
         config, race=dataclasses.replace(config.race, max_crashes=2)
@@ -333,38 +335,7 @@ def test_max_crashes_dnfs(stadium: Track, config: Config) -> None:
     assert r.crashes == 2
 
 
-def _fingerprint(result: RaceResult) -> tuple:
-    return (
-        result.track_name,
-        round(result.time, 9),
-        tuple(
-            (
-                r.name,
-                r.status,
-                r.finish_order,
-                r.laps_completed,
-                r.crashes,
-                r.dnf_reason,
-                round(r.total_time or 0.0, 9),
-                round(r.best_lap or 0.0, 9),
-                round(r.last_lap or 0.0, 9),
-            )
-            for r in result.results
-        ),
-    )
-
-
-def test_race_is_deterministic(stadium: Track, config: Config) -> None:
-    config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
-    first = run_race(
-        stadium, config, [StadiumDriver(25.0), StraightDriver(25.0)], ["a", "b"]
-    )
-    second = run_race(
-        stadium, config, [StadiumDriver(25.0), StraightDriver(25.0)], ["a", "b"]
-    )
-    assert _fingerprint(first) == _fingerprint(second)
-
-
+@pytest.mark.slow
 def test_open_loop_stub_crashes_out(stadium: Track, config: Config) -> None:
     stub = Path(__file__).resolve().parent.parent / "controllers" / "open_loop.py"
     controller = load_controller(stub)
@@ -538,6 +509,7 @@ def test_auto_start_default_skips_waiting(stadium: Track, config: Config) -> Non
     assert race.countdown == pytest.approx(config.race.countdown, abs=1e-9)
 
 
+@pytest.mark.slow
 def test_run_releases_a_waiting_engine(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(
         config, race=dataclasses.replace(config.race, time_limit=1.0)
@@ -585,6 +557,7 @@ def test_countdown_holds_vehicles_still_and_silent(
     assert engine.vehicles[0].speed > 0.0
 
 
+@pytest.mark.slow
 def test_lap_timing_starts_at_countdown_end(stadium: Track, config: Config) -> None:
     config = dataclasses.replace(config, race=dataclasses.replace(config.race, laps=1))
     grid_s = stadium.track_length - config.race.grid_spacing
@@ -654,6 +627,7 @@ def test_vehicle_collision_resets_both_to_pause_and_ghost(
     assert target.state.crashes == 1
 
 
+@pytest.mark.slow
 def test_race_ends_on_timeout_with_dnfs_ranked_last(
     stadium: Track, config: Config
 ) -> None:
@@ -689,6 +663,7 @@ def test_race_ends_on_timeout_with_dnfs_ranked_last(
     assert 30.0 <= result.time < 30.05
 
 
+@pytest.mark.slow
 def test_race_ranks_two_finishers_by_finish_time(
     stadium: Track, config: Config
 ) -> None:

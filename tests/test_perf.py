@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from cocoracer.config import Config
 from cocoracer.controller import load_controller
@@ -15,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PURE_PURSUIT = REPO_ROOT / "controllers" / "pure_pursuit.py"
 
 
+@pytest.mark.slow
 def test_eight_vehicle_tick_cost_stays_within_budget(
     stadium: Track, config: Config
 ) -> None:

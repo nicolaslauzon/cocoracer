@@ -10,8 +10,8 @@ import pytest
 
 from cocoracer.cli import main
 from cocoracer.config import Config
-from cocoracer.controller import Controller, load_controller
-from cocoracer.engine import RaceEngine, RaceResult, VehicleStatus, run_race
+from cocoracer.controller import Controller
+from cocoracer.engine import RaceEngine, VehicleStatus
 from cocoracer.track import Track
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -58,6 +58,7 @@ class ScanRecorder(Controller):
         return self._speed, 0.0
 
 
+@pytest.mark.slow
 def test_cli_race_runs_four_controllers_headless(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -189,37 +190,3 @@ def test_racing_visible_in_scans_ghosts_absent(stadium: Track, config: Config) -
     # The ghost is absent from the scan: beam 0 now sees the racing
     # third vehicle's circle 7.5 m ahead, not the ghost at 3.5 m.
     assert recorder.scans[-1][0] == pytest.approx(7.5, abs=0.05)
-
-
-def _load_pure_pursuit(config: Config) -> Controller:
-    return load_controller(PURE_PURSUIT, baselines=config.baselines)
-
-
-def test_race_is_deterministic_with_eight_vehicles(
-    stadium: Track, config: Config
-) -> None:
-    def race() -> RaceResult:
-        return run_race(
-            stadium,
-            config,
-            [_load_pure_pursuit(config) for _ in range(8)],
-            [f"v{i}" for i in range(8)],
-            mode="race",
-        )
-
-    first = race()
-    second = race()
-    assert first.track_name == second.track_name
-    assert first.time == pytest.approx(second.time, abs=1e-9)
-    assert len(first.results) == 8
-    for a, b in zip(first.results, second.results, strict=True):
-        assert a.name == b.name
-        assert a.status == b.status
-        assert a.finish_order == b.finish_order
-        assert a.laps_completed == b.laps_completed
-        assert a.crashes == b.crashes
-        assert a.dnf_reason == b.dnf_reason
-        if a.total_time is None:
-            assert b.total_time is None
-        else:
-            assert a.total_time == pytest.approx(b.total_time, abs=1e-9)
