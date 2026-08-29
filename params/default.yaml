@@ -45,6 +45,22 @@ tracks:
   silverstone:
     file: tracks/silverstone.json
 
+maps:
+  scale: 0.6
+  tracks:
+    right-interior:
+      map: ../maps/right-interior.pgm
+      direction: ccw
+      start: [378, 359]
+    icra-2023-short:
+      map: ../maps/race_f1tenth_icra_2023_short.pgm
+      direction: ccw
+      start: [82, 189]
+    icra-2025:
+      map: ../maps/icra-2025.pgm
+      direction: cw
+      start: [366, 23]
+
 baselines:
   pure_pursuit:
     wheelbase: 1.65

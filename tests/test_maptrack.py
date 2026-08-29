@@ -3,13 +3,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from cocoracer.config import Config, MapSpec
 from cocoracer.maptrack import (
     DEFAULT_SCALE,
     build_map_track,
     parse_centerline,
     parse_metadata,
 )
-from cocoracer.track import TrackError
+from cocoracer.track import Track, TrackError, build_track
 
 MAPS = Path(__file__).resolve().parent.parent / "maps"
 SHIPPED = ["right-interior", "race_f1tenth_icra_2023_short", "icra-2025"]
@@ -342,6 +343,87 @@ def test_build_track_dispatches_map_spec(tmp_path: Path) -> None:
     np.testing.assert_allclose(track.centerline, direct.centerline, atol=1e-9)
     assert track.track_length == pytest.approx(direct.track_length)
     np.testing.assert_array_equal(track.occupied, direct.occupied)
+
+
+# Track names as loaded from params/default.yaml, and the direction each
+# centerline CSV was authored in (as seen on the map image).
+PARAM_MAPS = ["right-interior", "icra-2023-short", "icra-2025"]
+AUTHORED_DIRECTION = {
+    "right-interior": "ccw",
+    "icra-2023-short": "ccw",
+    "icra-2025": "cw",
+}
+
+
+def _param_start_world(track: Track, spec: MapSpec) -> tuple[float, float]:
+    # Row 0 is the image top, so the pixel's y runs up from the bottom;
+    # the grid is the image upsampled 2x, so the image is half its height.
+    height = track.grid_shape[0] // 2
+    col, row = spec.start
+    return (col + 0.5) * spec.scale, (height - row - 0.5) * spec.scale
+
+
+@pytest.mark.parametrize("name", PARAM_MAPS)
+def test_param_map_builds_and_width_matches_csv(config: Config, name: str) -> None:
+    # The build raises TrackError if the derived walls sit outside the
+    # drivable surface or the corridor between them is not drivable, so a
+    # clean build is the mask consistency check passing.
+    track = build_track(config.tracks[name])
+    spec = config.tracks[name].map
+    assert spec is not None
+    csv = parse_centerline(spec.image.with_suffix(".csv"))
+    meta = parse_metadata(spec.image.with_suffix(".yaml"))
+    expected = float(
+        np.median((csv[:, 2] + csv[:, 3]) * (spec.scale / meta.resolution))
+    )
+    assert track.width == pytest.approx(expected, rel=0.1)
+
+
+@pytest.mark.parametrize("name", PARAM_MAPS)
+def test_param_map_start_line_at_configured_pixel(config: Config, name: str) -> None:
+    track = build_track(config.tracks[name])
+    spec = config.tracks[name].map
+    assert spec is not None
+    x, y = _param_start_world(track, spec)
+    # The pixel lies on the start line's cross-section: s near 0 and within
+    # the median half-width of the centerline (the pixel may be off-center).
+    s, d, _ = track.to_frenet(x, y, 0.0)
+    assert min(s, track.track_length - s) <= 0.6
+    assert abs(d) <= track.width / 2.0
+    # The start pose is the centerline point nearest the pixel.
+    px, py, _ = track.start_pose
+    assert (px - x) ** 2 + (py - y) ** 2 <= (abs(d) + 0.6) ** 2
+
+
+@pytest.mark.parametrize("name", PARAM_MAPS)
+def test_param_map_direction_matches_param_key(config: Config, name: str) -> None:
+    spec = config.tracks[name]
+    assert spec.map is not None
+    assert spec.map.direction == AUTHORED_DIRECTION[name]
+    track = build_track(config.tracks[name])
+    # Positive signed area is counterclockwise in the y-up track world,
+    # which reads counterclockwise on the image (row 0 at the top).
+    xy = track.centerline_xy
+    area = 0.5 * np.sum(
+        xy[:, 0] * np.roll(xy[:, 1], -1) - np.roll(xy[:, 0], -1) * xy[:, 1]
+    )
+    assert (area > 0.0) == (spec.map.direction == "ccw")
+    # The start heading points along the CSV's own point order.
+    meta = parse_metadata(spec.map.image.with_suffix(".yaml"))
+    native = parse_centerline(spec.map.image.with_suffix(".csv"))
+    xy_native = (native[:, :2] - np.array(meta.origin, dtype=np.float64)) * (
+        spec.map.scale / meta.resolution
+    )
+    x, y = _param_start_world(track, spec.map)
+    d2 = (xy_native[:, 0] - x) ** 2 + (xy_native[:, 1] - y) ** 2
+    i = int(np.argmin(d2))
+    j = (i + 1) % len(xy_native)
+    authored = float(
+        np.arctan2(xy_native[j, 1] - xy_native[i, 1], xy_native[j, 0] - xy_native[i, 0])
+    )
+    _, _, yaw = track.start_pose
+    diff = abs((yaw - authored + np.pi) % (2.0 * np.pi) - np.pi)
+    assert diff <= 0.05
 
 
 @pytest.mark.parametrize("name", SHIPPED)
