@@ -23,7 +23,7 @@ cocoracer time-trial --controller controllers/starter.py --no-web
 ## Agent skills
 
 ### Issue tracker
-Issues and specs are local markdown files under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`.
+Issues and specs are local markdown files under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`. Multi-session features keep running state in `.scratch/<feature-slug>/PROGRESS.md` — update it whenever a branch merges.
 
 ### Triage labels
 Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), recorded as a `Status:` line in issue files. See `docs/agents/triage-labels.md`.
