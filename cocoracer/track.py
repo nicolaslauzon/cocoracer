@@ -348,7 +348,8 @@ def _offset_walls(
     s: np.ndarray,
     spline_x: CubicSpline,
     spline_y: CubicSpline,
-    offset: float,
+    offset_left: float | np.ndarray,
+    offset_right: float | np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     dx = spline_x(s, 1)
     dy = spline_y(s, 1)
@@ -356,10 +357,10 @@ def _offset_walls(
     nx = -dy / norm
     ny = dx / norm
     left = np.column_stack(
-        [centerline[:, 0] + offset * nx, centerline[:, 1] + offset * ny]
+        [centerline[:, 0] + offset_left * nx, centerline[:, 1] + offset_left * ny]
     )
     right = np.column_stack(
-        [centerline[:, 0] - offset * nx, centerline[:, 1] - offset * ny]
+        [centerline[:, 0] - offset_right * nx, centerline[:, 1] - offset_right * ny]
     )
     return left, right
 
@@ -462,7 +463,7 @@ def build_track(
     if walls is None:
         s_vals = np.concatenate([frenet_s, [0.0]])
         left_wall, right_wall = _offset_walls(
-            centerline, s_vals, spline_x, spline_y, spec.width / 2.0
+            centerline, s_vals, spline_x, spline_y, spec.width / 2.0, spec.width / 2.0
         )
         if grid is None:
             grid = _build_grid(centerline, spec)
