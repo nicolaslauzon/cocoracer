@@ -75,12 +75,22 @@ class Segment:
 
 
 @dataclass
+class MapSpec:
+    image: Path
+    scale: float
+    threshold: int
+    direction: str
+    start: tuple[int, int]
+
+
+@dataclass
 class TrackSpec:
     name: str
     width: float
     resolution: float
     segments: list[Segment] | None = None
     centerline: list[tuple[float, float]] | None = None
+    map: MapSpec | None = None
 
 
 @dataclass
@@ -176,6 +186,73 @@ def _build_track(name: str, data: dict, base_dir: Path) -> TrackSpec:
     )
 
 
+def _map_image_from(data: dict, section: str, base_dir: Path) -> Path:
+    ref = _require(data, "map", section)
+    if not isinstance(ref, str):
+        raise ConfigError(f"'map' in {section} must be a string path")
+    path = base_dir / ref
+    if not path.is_file():
+        raise ConfigError(f"map image '{ref}' for {section} not found")
+    return path
+
+
+def _map_start_from(data: dict, section: str) -> tuple[int, int]:
+    raw = _require(data, "start", section)
+    if not isinstance(raw, (list, tuple)) or len(raw) != 2:
+        raise ConfigError(f"map track '{section}' start must be [col, row]")
+    try:
+        col, row = int(raw[0]), int(raw[1])
+    except (TypeError, ValueError):
+        raise ConfigError(
+            f"map track '{section}' start must be two integer pixels"
+        ) from None
+    return (col, row)
+
+
+def _map_spec_from(
+    name: str,
+    data: dict,
+    base_dir: Path,
+    default_scale: float,
+    default_threshold: int,
+) -> MapSpec:
+    from cocoracer.maptrack import MAP_DIRECTIONS
+
+    section = f"maps.tracks.{name}"
+    if not isinstance(data, dict):
+        raise ConfigError(f"map track '{section}' must be a mapping")
+    direction = str(_require(data, "direction", section))
+    if direction not in MAP_DIRECTIONS:
+        raise ConfigError(f"map track '{section}' direction must be 'cw' or 'ccw'")
+    return MapSpec(
+        image=_map_image_from(data, section, base_dir),
+        scale=float(data.get("scale", default_scale)),
+        threshold=int(data.get("threshold", default_threshold)),
+        direction=direction,
+        start=_map_start_from(data, section),
+    )
+
+
+def _maps_from(raw_maps: dict | None, base_dir: Path) -> dict[str, MapSpec]:
+    # Imported lazily: maptrack imports track, which imports config.
+    from cocoracer.maptrack import DEFAULT_SCALE
+    from cocoracer.pgm import DEFAULT_THRESHOLD
+
+    if raw_maps is None:
+        return {}
+    if not isinstance(raw_maps, dict):
+        raise ConfigError("'maps' must be a mapping")
+    raw_tracks = raw_maps.get("tracks", {})
+    if not isinstance(raw_tracks, dict):
+        raise ConfigError("'tracks' in maps must be a mapping")
+    default_scale = float(raw_maps.get("scale", DEFAULT_SCALE))
+    default_threshold = int(raw_maps.get("threshold", DEFAULT_THRESHOLD))
+    return {
+        name: _map_spec_from(name, data, base_dir, default_scale, default_threshold)
+        for name, data in raw_tracks.items()
+    }
+
+
 def load_config(path: Path | str) -> Config:
     with open(path) as handle:
         raw = yaml.safe_load(handle)
@@ -207,6 +284,11 @@ def load_config(path: Path | str) -> Config:
     tracks = {
         name: _build_track(name, data, base_dir) for name, data in tracks_raw.items()
     }
+    maps = _maps_from(raw.get("maps"), base_dir)
+    for name, spec in maps.items():
+        if name in tracks:
+            raise ConfigError(f"track '{name}' is declared in both 'tracks' and 'maps'")
+        tracks[name] = TrackSpec(name=name, width=0.0, resolution=0.0, map=spec)
     default_track = raw.get("default_track", next(iter(tracks)))
     if default_track not in tracks:
         raise ConfigError(f"default_track '{default_track}' not defined in tracks")

@@ -17,6 +17,7 @@ from cocoracer.track import (
 )
 
 DEFAULT_SCALE = 0.6
+MAP_DIRECTIONS = ("cw", "ccw")
 GRID_UPSAMPLE = 2
 CENTERLINE_SPACING = 0.3
 CORRIDOR_STEP = 0.3
@@ -128,20 +129,28 @@ def build_map_track(
     centerline_csv: Path | str,
     metadata_yaml: Path | str,
     image_pgm: Path | str,
+    direction: str,
+    start: tuple[int, int],
     scale: float = DEFAULT_SCALE,
     threshold: int = DEFAULT_THRESHOLD,
 ) -> Track:
     """Build a Track from a map's centerline CSV, metadata YAML, and PGM image.
 
     Points and widths are converted from native meters to track world
-    (origin at the image corner, y-up, scaled by scale/resolution), then
-    the existing Frenet machinery resamples and splines the centerline.
-    The wall curves are the pointwise normal offsets of the resampled
-    centerline by the CSV's w_left and w_right. The occupancy grid is the
-    largest-component drivable mask of the image, upsampled 2x.
+    (origin at the image corner, y-up, scaled by scale/resolution).
+    `direction` is the travel direction as seen on the image ("cw" or
+    "ccw"); if the centerline's point order runs the other way, the order
+    is reversed, which also swaps the derived left/right walls. The
+    centerline is then re-fitted so the point nearest the `start` pixel
+    sits at s=0, and the existing Frenet machinery resamples and splines
+    it from there. The wall curves are the pointwise normal offsets of
+    the resampled centerline by the CSV's w_left and w_right. The
+    occupancy grid is the largest-component drivable mask of the image,
+    upsampled 2x.
 
     The build fails with TrackError when the CSV or metadata is malformed,
-    a centerline point leaves the image, the walls sit outside the
+    the direction is unknown, the start pixel leaves the image, a
+    centerline point leaves the image, the walls sit outside the
     drivable surface, or the corridor between the walls crosses
     non-drivable pixels.
 
@@ -151,17 +160,22 @@ def build_map_track(
             x, y, w_right, w_left in native meters.
         metadata_yaml: Robot-world PGM metadata (resolution, origin).
         image_pgm: The map's PGM P5 image.
+        direction: Travel direction as seen on the image, "cw" or "ccw".
+        start: Start/finish pixel in image pixels as [col, row]; row 0
+            is the top of the image.
         scale: Track scale, meters of track world per image pixel.
         threshold: Minimum pixel value that counts as drivable.
 
     Returns:
         The built Track.
     """
+    if direction not in MAP_DIRECTIONS:
+        raise TrackError(f"track {name!r} direction must be 'cw' or 'ccw'")
     meta = parse_metadata(metadata_yaml)
     native = parse_centerline(centerline_csv)
     image = parse_pgm(image_pgm)
     mask = drivable_mask(image, threshold)
-    return _build_from_native(name, native, meta, image, mask, scale)
+    return _build_from_native(name, native, meta, image, mask, scale, direction, start)
 
 
 def _build_from_native(
@@ -171,11 +185,15 @@ def _build_from_native(
     image: np.ndarray,
     mask: np.ndarray,
     scale: float,
+    direction: str,
+    start: tuple[int, int],
 ) -> Track:
     factor = scale / meta.resolution
     xy = (native[:, :2] - np.array(meta.origin, dtype=np.float64)) * factor
     widths = native[:, 2:] * factor
     _check_inside_image(name, xy, scale, image.shape)
+    xy, widths = _order_for_direction(xy, widths, direction)
+    xy, widths = _rotate_to_start(name, xy, widths, start, scale, image.shape)
     raw = _ring_raw(xy)
     centerline, track_length, spline_x, spline_y, tree, frenet_s = _resample_and_fit(
         raw, CENTERLINE_SPACING
@@ -218,6 +236,55 @@ def _build_from_native(
         frenet_tree=tree,
         frenet_s=frenet_s,
     )
+
+
+def _order_for_direction(
+    xy: np.ndarray, widths: np.ndarray, direction: str
+) -> tuple[np.ndarray, np.ndarray]:
+    area = _signed_area(xy)
+    if not np.isfinite(area) or abs(area) < 1e-9:
+        raise TrackError("centerline encloses no area; cannot determine direction")
+    # Positive signed area is counterclockwise in the y-up track world,
+    # which reads counterclockwise on the image as well (row 0 at top).
+    if (area > 0.0) == (direction == "ccw"):
+        return xy, widths
+    return _reverse_ring(xy, widths)
+
+
+def _reverse_ring(xy: np.ndarray, widths: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    # Reversing the travel direction puts each wall on the opposite side,
+    # so the width columns swap along with the point order.
+    reversed_xy = np.vstack([xy[:1], xy[:0:-1]])
+    reversed_widths = np.vstack([widths[:1], widths[:0:-1]])[:, ::-1]
+    return reversed_xy, reversed_widths
+
+
+def _signed_area(xy: np.ndarray) -> float:
+    x, y = xy[:, 0], xy[:, 1]
+    return float(0.5 * np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+
+def _rotate_to_start(
+    name: str,
+    xy: np.ndarray,
+    widths: np.ndarray,
+    start: tuple[int, int],
+    scale: float,
+    image_shape: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray]:
+    height, width = image_shape
+    col, row = start
+    if not 0 <= col < width or not 0 <= row < height:
+        raise TrackError(
+            f"track {name!r} start pixel [{col}, {row}] is outside the image"
+        )
+    x = (col + 0.5) * scale
+    y = (height - row - 0.5) * scale
+    d2 = (xy[:, 0] - x) ** 2 + (xy[:, 1] - y) ** 2
+    first = int(np.argmin(d2))
+    if first == 0:
+        return xy, widths
+    return np.roll(xy, -first, axis=0), np.roll(widths, -first, axis=0)
 
 
 def _ring_raw(xy: np.ndarray) -> np.ndarray:

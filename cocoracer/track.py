@@ -443,6 +443,8 @@ def build_track(
 ) -> Track:
     """Build a Track from a layout spec.
 
+    A spec with a map delegates to the map build, which reads the
+    centerline CSV and metadata YAML derived from the map image path.
     Without `walls`, both walls are synthesized at +/-spec.width/2 around
     the centerline (the constant-width case) and the occupancy grid is
     built from that band. A map-based build passes explicit left/right wall
@@ -450,6 +452,20 @@ def build_track(
     The reported width is always the median wall-to-wall distance along the
     centerline, so a constant-width track reports its configured width.
     """
+    if spec.map is not None:
+        from cocoracer.maptrack import build_map_track
+
+        m = spec.map
+        return build_map_track(
+            spec.name,
+            m.image.with_suffix(".csv"),
+            m.image.with_suffix(".yaml"),
+            m.image,
+            m.direction,
+            m.start,
+            scale=m.scale,
+            threshold=m.threshold,
+        )
     if spec.centerline is not None:
         raw = _centerline_to_raw(spec.centerline, spec.name)
     else:
