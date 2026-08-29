@@ -14,7 +14,7 @@ Independent: **18** (zigzag grid) — dispatchable in parallel with 05.
 
 ## Resume
 
-1. Dispatch the ticket 05 agent in `/tmp/opencode/wt-pgm-05` (branch `pgm-05`, at master). The brief is the ticket file plus the spec's "Map import", "Scale and grid", and "Further Notes" bullets.
+1. Dispatch the ticket 05 agent in `/tmp/opencode/wt-pgm-05` (branch `pgm-05`, at master). If the directory is gone (it lives in /tmp): `git worktree add /tmp/opencode/wt-pgm-05 pgm-05 && git -C /tmp/opencode/wt-pgm-05 merge --ff-only master`. The brief is the ticket file plus the spec's "Map import", "Scale and grid", and "Further Notes" bullets.
 2. When it returns: run the four checks, merge the branch into master, tick the ticket's boxes, commit the tick-off.
 3. Repeat for 06, then 07, then 16, then 17.
 Tooling: worktrees have no `.venv` — run `/home/nilau28/cocoracer/.venv/bin/python -m ruff format .`, `-m ruff check .`, `-m mypy cocoracer tests`, `-m pytest` from the worktree root. Full pytest is ~12 min; that dominates the chain's wall time.
