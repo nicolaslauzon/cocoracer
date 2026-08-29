@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] The Start button is visible exactly while the phase is `waiting`
-- [ ] Pressing it sends the start message, which releases the field and begins the countdown
-- [ ] The button is gone once the countdown starts
-- [ ] The front-end structural test asserts the button element and the start-message type
+- [x] The Start button is visible exactly while the phase is `waiting`
+- [x] Pressing it sends the start message, which releases the field and begins the countdown
+- [x] The button is gone once the countdown starts
+- [x] The front-end structural test asserts the button element and the start-message type

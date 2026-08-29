@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Track exposes centerline, left/right wall curves, and the occupancy grid; no constant half-width remains
-- [ ] Stadium and centerline-JSON tracks build with synthesized ±width/2 walls; reported width equals the configured width
-- [ ] Existing F1 tracks build and report a median width within tolerance of their old constant width
-- [ ] Grid is 0.3 m cells; collision and laser-scan behavior on existing tracks unchanged
-- [ ] Controller contract tests pass unchanged; tick-budget performance test green
+- [x] Track exposes centerline, left/right wall curves, and the occupancy grid; no constant half-width remains
+- [x] Stadium and centerline-JSON tracks build with synthesized ±width/2 walls; reported width equals the configured width
+- [x] Existing F1 tracks build and report a median width within tolerance of their old constant width
+- [x] Grid is 0.3 m cells; collision and laser-scan behavior on existing tracks unchanged
+- [x] Controller contract tests pass unchanged; tick-budget performance test green

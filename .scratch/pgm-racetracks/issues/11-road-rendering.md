@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] The road is filled between the two wall curves, not a constant-width band
-- [ ] A dashed centerline is drawn over the road
-- [ ] The start line spans from wall to wall
-- [ ] The front-end structural test passes against the updated field set
+- [x] The road is filled between the two wall curves, not a constant-width band
+- [x] A dashed centerline is drawn over the road
+- [x] The start line spans from wall to wall
+- [x] The front-end structural test passes against the updated field set

@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] The static message contains the wall curves, track length, vehicle dimensions, and start line
-- [ ] The static message no longer contains the occupied-cell list or a constant width
-- [ ] Wall curves in the payload are downsampled to ~1 m spacing; the in-process track is unaffected
-- [ ] The dynamic message carries the `waiting` phase
-- [ ] The front-end structural test still asserts the page covers every protocol field, so a renamed key fails CI (the page is updated to the new field set in this ticket or the next; the suite is green when this lands)
+- [x] The static message contains the wall curves, track length, vehicle dimensions, and start line
+- [x] The static message no longer contains the occupied-cell list or a constant width
+- [x] Wall curves in the payload are downsampled to ~1 m spacing; the in-process track is unaffected
+- [x] The dynamic message carries the `waiting` phase
+- [x] The front-end structural test still asserts the page covers every protocol field, so a renamed key fails CI (the page is updated to the new field set in this ticket or the next; the suite is green when this lands)

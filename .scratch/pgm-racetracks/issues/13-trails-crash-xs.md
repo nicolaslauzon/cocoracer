@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Each car's trail accumulates from the dynamic messages and keeps the last half lap of driven arc length
-- [ ] The trail is faded by age
-- [ ] A crash drops an X at the crash point and breaks the trail (no line to the centerline reset)
-- [ ] The trail and the Xs expire on the same half-lap arc-length window
-- [ ] No trail state on the server and no trail fields in the protocol
+- [x] Each car's trail accumulates from the dynamic messages and keeps the last half lap of driven arc length
+- [x] The trail is faded by age
+- [x] A crash drops an X at the crash point and breaks the trail (no line to the centerline reset)
+- [x] The trail and the Xs expire on the same half-lap arc-length window
+- [x] No trail state on the server and no trail fields in the protocol

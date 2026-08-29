@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] A live run begins in phase `waiting` with the sim clock frozen
-- [ ] A `start` message over the WebSocket releases the field on the next tick
-- [ ] The engine is mutated only by the sim thread (the web thread only enqueues)
-- [ ] The first start message wins; duplicate start messages are ignored
-- [ ] Headless runs start immediately with no button, unchanged
+- [x] A live run begins in phase `waiting` with the sim clock frozen
+- [x] A `start` message over the WebSocket releases the field on the next tick
+- [x] The engine is mutated only by the sim thread (the web thread only enqueues)
+- [x] The first start message wins; duplicate start messages are ignored
+- [x] Headless runs start immediately with no button, unchanged

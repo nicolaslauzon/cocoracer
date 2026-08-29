@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] The car body is a rectangle at the true vehicle length × width, rotated by heading
-- [ ] Two black wheel bars sit across the front and rear axles; a grey front window is present
-- [ ] Body color still maps one-to-one to vehicle status (racing, paused, ghost, finished, DNF)
-- [ ] Each part has a minimum visible pixel size so the car never vanishes at distance
+- [x] The car body is a rectangle at the true vehicle length × width, rotated by heading
+- [x] Two black wheel bars sit across the front and rear axles; a grey front window is present
+- [x] Body color still maps one-to-one to vehicle status (racing, paused, ghost, finished, DNF)
+- [x] Each part has a minimum visible pixel size so the car never vanishes at distance
