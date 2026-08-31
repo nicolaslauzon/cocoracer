@@ -25,6 +25,15 @@ class Vehicle:
     steering: float = 0.0
     target_speed: float = 0.0
     target_steering: float = 0.0
+    last_crash_x: float | None = None
+    last_crash_y: float | None = None
+
+    @property
+    def last_crash(self) -> tuple[float, float] | None:
+        """Position where the vehicle last crashed, before any reset."""
+        if self.last_crash_x is None or self.last_crash_y is None:
+            return None
+        return (self.last_crash_x, self.last_crash_y)
 
     def anchor(self, track: Track, time: float) -> None:
         """Re-anchor the lap tracker at the current pose and time.
@@ -52,10 +61,12 @@ class Vehicle:
         """Apply the crash consequence; True if the crash DNFs the vehicle.
 
         Zeroes the motion, registers the crash with the race state (pause,
-        or DNF at the crash limit), and — unless it is a DNF — resets the
-        vehicle to the nearest centerline pose with the lap tracker
-        resynced there.
+        or DNF at the crash limit), records the pre-reset crash position,
+        and — unless it is a DNF — resets the vehicle to the nearest
+        centerline pose with the lap tracker resynced there.
         """
+        crash_x, crash_y = self.x, self.y
+        self.last_crash_x, self.last_crash_y = crash_x, crash_y
         dnf = self.state.crash()
         self.speed = 0.0
         self.steering = 0.0

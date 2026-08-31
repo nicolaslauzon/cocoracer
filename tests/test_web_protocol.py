@@ -115,6 +115,7 @@ def test_dynamic_message_shape(stadium: Track) -> None:
     assert v["last_lap"] is None
     assert v["crashes"] == 0
     assert v["finish_time"] is None
+    assert v["last_crash"] is None
     assert v["scan"] == [0.5, None, 1.5]
 
 
@@ -151,6 +152,48 @@ def test_dynamic_message_null_for_no_hit_and_missing_scan(stadium: Track) -> Non
     assert second["scan"] is None
     assert msg["phase"] == "countdown"
     assert msg["countdown"] == pytest.approx(2.5)
+
+
+class Plow(Controller):
+    """Drives straight into the first wall."""
+
+    def step(
+        self,
+        x: float,
+        y: float,
+        yaw: float,
+        speed: float,
+        steering_angle: float,
+        laser_scan: np.ndarray,
+    ) -> tuple[float, float]:
+        return 5.0, 0.0
+
+
+def test_dynamic_message_carries_the_crash_position(
+    stadium: Track, config: Config
+) -> None:
+    config = dataclasses.replace(
+        config, race=dataclasses.replace(config.race, max_crashes=99)
+    )
+    engine = RaceEngine(stadium, config, [Plow()], ["plow"])
+    for _ in range(2000):
+        engine.tick()
+        if engine.vehicles[0].last_crash is not None:
+            break
+    v = engine.vehicles[0]
+    assert v.last_crash is not None
+    crash_x, crash_y = v.last_crash
+    msg = json.loads(
+        build_dynamic_message(
+            engine.snapshot(), engine.phase, engine.countdown, engine.last_scans
+        )
+    )
+    sent = msg["vehicles"][0]["last_crash"]
+    assert sent is not None
+    assert sent["x"] == pytest.approx(crash_x)
+    assert sent["y"] == pytest.approx(crash_y)
+    # The vehicle itself was reset away from the crash position.
+    assert (v.x, v.y) != pytest.approx((crash_x, crash_y))
 
 
 def test_dynamic_message_carries_waiting_phase(stadium: Track, config: Config) -> None:

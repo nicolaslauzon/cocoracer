@@ -188,7 +188,8 @@ function updateTrails(msg) {
     tr.crashes = v.crashes;
     const last = tr.points.length ? tr.points[tr.points.length - 1] : null;
     if (crashed) {
-      tr.marks.push({ x: v.x, y: v.y, d: tr.dist });
+      const cp = v.last_crash ?? { x: v.x, y: v.y };
+      tr.marks.push({ x: cp.x, y: cp.y, d: tr.dist });
     } else if (last) {
       tr.dist += Math.hypot(v.x - last.x, v.y - last.y);
     }

@@ -81,6 +81,7 @@ class VehicleSnapshot:
     crashes: int
     finish_time: float | None
     dnf_reason: DnfReason | None
+    last_crash: tuple[float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -257,6 +258,7 @@ class RaceEngine:
                     crashes=v.state.crashes,
                     finish_time=v.state.finish_time,
                     dnf_reason=v.state.dnf_reason,
+                    last_crash=v.last_crash,
                 )
                 for i, v in enumerate(self.vehicles)
             ),

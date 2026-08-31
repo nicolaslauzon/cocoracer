@@ -104,6 +104,9 @@ def build_dynamic_message(
                 "last_lap": snap.last_lap,
                 "crashes": int(snap.crashes),
                 "finish_time": snap.finish_time,
+                "last_crash": None
+                if snap.last_crash is None
+                else {"x": float(snap.last_crash[0]), "y": float(snap.last_crash[1])},
                 "scan": _scan_list(scan),
             }
         )
