@@ -29,12 +29,13 @@ dev = [
 
 [project.scripts]
 cocoracer = "cocoracer.cli:main"
+demo = "cocoracer.demo:main"
 
 [tool.setuptools.packages.find]
 include = ["cocoracer*"]
 
 [tool.setuptools.package-data]
-cocoracer = ["web/*.html"]
+cocoracer = ["web/*.html", "bundled/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
