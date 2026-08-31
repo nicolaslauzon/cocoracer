@@ -1,0 +1,84 @@
+default_track: icra-2023-short
+
+simulation:
+  tick_hz: 40
+  physics_substeps: 4
+
+vehicle:
+  lf: 0.79
+  lr: 0.86
+  length: 2.5
+  width: 2.0
+  max_speed: 25.0
+  min_speed: 0.0
+  max_accel: 8.0
+  max_steer: 0.5
+  min_steer: -0.5
+  max_steer_rate: 4.0
+  min_steer_rate: -4.0
+
+sensor:
+  beam_count: 72
+
+race:
+  laps: 3
+  time_limit: 600.0
+  crash_pause: 2.0
+  ghost_duration: 1.5
+  collision_distance: 2.5
+  max_crashes: 5
+  countdown: 3.0
+
+tracks:
+  stadium:
+    width: 20.0
+    resolution: 0.3
+    segments:
+      - { type: straight, length: 120.0 }
+      - { type: turn, radius: 40.0, angle: 180.0 }
+      - { type: straight, length: 120.0 }
+      - { type: turn, radius: 40.0, angle: 180.0 }
+maps:
+  scale: 0.6
+  tracks:
+    right-interior:
+      map: ../maps/right-interior.pgm
+      direction: ccw
+      start: [378, 359]
+    icra-2023-short:
+      map: ../maps/race_f1tenth_icra_2023_short.pgm
+      direction: ccw
+      start: [82, 189]
+    icra-2025:
+      map: ../maps/icra-2025.pgm
+      direction: cw
+      start: [366, 23]
+
+baselines:
+  pure_pursuit:
+    wheelbase: 1.65
+    max_steer: 0.5
+    lookahead_slope: 0.10
+    lookahead_offset: 12.0
+    min_lookahead: 10.0
+    max_lookahead: 50.0
+    target_speed: 15.0
+  wall_follow:
+    target_wall_distance: 6.0
+    kp: 0.45
+    kd: 2.0
+    v_ref: 4.0
+    steer_speed_factor: 0.5
+    sector_half_angle: 60.0
+  disparity_extender:
+    car_width: 2.0
+    wheelbase: 1.65
+    max_steer: 0.5
+    kp: 1.0
+    kd: 0.4
+    full_speed_distance: 100.0
+    brake_distance: 20.0
+    min_speed: 1.5
+    max_speed: 18.0
+    friction: 0.52
+    disparity_threshold: 40.0

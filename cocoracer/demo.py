@@ -7,7 +7,7 @@ from cocoracer.config import load_config
 from cocoracer.track import build_track
 
 BUNDLED_DIR = Path(__file__).resolve().parent / "bundled"
-PARAMS_DIR = Path(__file__).resolve().parent.parent / "params"
+PARAMS_FILE = BUNDLED_DIR / "default.yaml"
 TRACK = "stadium"
 OPPONENT = "wall_follow.py"
 
@@ -34,7 +34,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    config = load_config(PARAMS_DIR / "default.yaml")
+    config = load_config(PARAMS_FILE)
     config.race.laps = 3
     track = build_track(config.tracks[TRACK])
     my_path = _resolve_controller(args.controller)
