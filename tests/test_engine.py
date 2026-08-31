@@ -132,9 +132,10 @@ def test_crash_resets_to_centerline_then_pause_and_ghost(
         engine.tick()
         statuses.append(v.state.status)
     assert statuses[:observed_pause] == [VehicleStatus.PAUSED] * observed_pause
-    assert statuses[observed_pause : observed_pause + ghost_ticks] == [
-        VehicleStatus.GHOST
-    ] * ghost_ticks
+    assert (
+        statuses[observed_pause : observed_pause + ghost_ticks]
+        == [VehicleStatus.GHOST] * ghost_ticks
+    )
     # The ghost drove through the wall, so it re-crashes the moment it
     # returns to racing.
     assert statuses[observed_pause + ghost_ticks] is VehicleStatus.PAUSED
