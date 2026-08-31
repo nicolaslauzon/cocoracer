@@ -150,3 +150,7 @@ def test_index_html_colors_every_vehicle_status() -> None:
     html = _index_html()
     for status in VehicleStatus:
         assert status.value in html, status.value
+    # Identity colors while racing: a fixed bright palette by grid order.
+    assert "PALETTE" in html
+    assert "colorFor" in html
+    assert 'STATUS_COLORS["racing"]' not in html

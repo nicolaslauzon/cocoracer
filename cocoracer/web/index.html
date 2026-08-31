@@ -49,14 +49,48 @@ const hud = document.getElementById("hud");
 const countdownEl = document.getElementById("countdown");
 const startBtn = document.getElementById("start");
 
-const COLORS = {
-  racing: "#4da3ff",
-  paused: "#ff5555",
-  ghost: "#9aa4b2",
-  finished: "#57d364",
-  dnf: "#ffa94d"
+const STATUS_COLORS = {
+  finished: "#ffffff",
+  dnf: "#000000",
+  paused: "#9aa4b2",
+  ghost: "#9aa4b2"
 };
-const ALPHAS = { ghost: 0.4 };
+const ALPHAS = { ghost: 0.4, paused: 0.6 };
+
+// Bright identity palette, assigned by grid order; vehicles beyond the
+// palette get a deterministic hue derived from their name, so colors
+// are stable across page reloads.
+const PALETTE = [
+  "#ff4fd8",
+  "#3f7bff",
+  "#ff3f3f",
+  "#35d13f",
+  "#ffe13f",
+  "#ff8c1a",
+  "#a64dff",
+  "#00e5d0"
+];
+
+function hslToHex(h, s, l) {
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const c = l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return "#" + f(0) + f(8) + f(4);
+}
+
+function colorFor(v) {
+  if (v.status === "racing") {
+    if (v.id < PALETTE.length) return PALETTE[v.id];
+    let h = 0;
+    for (const ch of v.name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return hslToHex(h % 360, 0.9, 0.55);
+  }
+  return STATUS_COLORS[v.status] ?? "#ffffff";
+}
 
 let staticMsg = null;
 let dynamicMsg = null;
@@ -213,7 +247,7 @@ function tintedSprite(color) {
 }
 
 function drawCar(v) {
-  const spr = tintedSprite(COLORS[v.status] ?? "#ffffff");
+  const spr = tintedSprite(colorFor(v));
   if (!spr) return;
   const [cx, cy] = view.toPx(v.x, v.y);
   const len = Math.max(8, staticMsg.vehicle.length * view.scale);
@@ -260,8 +294,8 @@ function drawTrails() {
     const tr = trails[v.id];
     if (!tr || tr.points.length < 2) continue;
     const base = Math.max(0, tr.dist - win);
-    ctx.strokeStyle = COLORS[v.status] ?? "#ffffff";
-    ctx.lineWidth = Math.max(1, 0.2 * view.scale);
+    ctx.strokeStyle = colorFor(v);
+    ctx.lineWidth = Math.max(1, 2.0 * view.scale);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     for (let i = 1; i < tr.points.length; i++) {

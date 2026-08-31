@@ -141,7 +141,9 @@ def test_ghost_cannot_be_recollided_in_traffic(stadium: Track, config: Config) -
     chaser, phantom, racer = engine.vehicles
     chaser.x, chaser.y, chaser.yaw = 12.0, 0.0, 0.0
     phantom.x, phantom.y, phantom.yaw = 14.0, 0.0, 0.0
-    racer.x, racer.y, racer.yaw = 9.0, 0.0, 0.0
+    # Far enough back that the racer reaches the parked pair during the
+    # ghost window, not while they are paused (pause = 2 s = 10 m at 5 m/s).
+    racer.x, racer.y, racer.yaw = 2.0, 0.0, 0.0
     while chaser.state.is_racing or phantom.state.is_racing:
         engine.tick()
     while chaser.state.status is VehicleStatus.PAUSED:
