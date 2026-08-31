@@ -13,7 +13,7 @@ Updated 2026-08-29. Master at `dea1cb8`, fast suite 247 passing + 18 slow (playe
 
 ## Remaining
 
-Chain, in order: **16 → 17** (17 is blocked by 16: the track set and default must be final).
+None — **16** merged to master (`37b3055`/`fa8f29f`); **17** closed without implementation on the player's decision (2026-08-31): the baselines will be fine-tuned by hand, so the half-lap bar, the verification script, and the extra CI smoke are dropped. See the ticket file for the annotated acceptance list.
 
 ## Resume
 
