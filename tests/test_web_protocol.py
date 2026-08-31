@@ -3,11 +3,20 @@
 import dataclasses
 import json
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-from cocoracer.config import Config
+from cocoracer.config import (
+    Config,
+    MapSpec,
+    RaceConfig,
+    SensorConfig,
+    SimConfig,
+    TrackSpec,
+    VehicleConfig,
+)
 from cocoracer.controller import Controller, TrackInfo
 from cocoracer.engine import (
     RaceEngine,
@@ -17,9 +26,16 @@ from cocoracer.engine import (
     VehicleStatus,
     run_race,
 )
+from cocoracer.maptrack import build_map_track
+from cocoracer.pgm import parse_pgm
 from cocoracer.race_state import DnfReason
 from cocoracer.track import Track
-from cocoracer.web.protocol import build_dynamic_message, build_static_message
+from cocoracer.web.protocol import (
+    build_dynamic_message,
+    build_static_message,
+    map_display_image,
+    pgm_png_bytes,
+)
 
 
 def test_static_message_shape(stadium: Track, config: Config) -> None:
@@ -45,8 +61,56 @@ def test_static_message_shape(stadium: Track, config: Config) -> None:
         "left": pytest.approx([stadium.left_wall[0, 0], stadium.left_wall[0, 1]]),
         "right": pytest.approx([stadium.right_wall[0, 0], stadium.right_wall[0, 1]]),
     }
+    # The stadium is a segment track: no display image to place.
+    assert msg["map_image"] is None
     assert "grid" not in msg
     assert "track_width" not in msg
+
+
+def test_static_message_carries_the_map_image_block(tmp_path: Path) -> None:
+    # A synthetic map: ring track on a 120x120 image plus its display
+    # (-gimp) variant, built in the world frame of image pixels * scale.
+    image = np.full((120, 120), 205, dtype=np.uint8)
+    yy, xx = np.mgrid[0:120, 0:120]
+    radius = np.hypot(xx - 60.0, yy - 60.0)
+    image[(radius >= 28.0) & (radius <= 52.0)] = 254
+    clean = tmp_path / "map.pgm"
+    header = b"P5\n120 120\n255\n"
+    clean.write_bytes(header + image.tobytes())
+    display = tmp_path / "map-gimp.pgm"
+    display.write_bytes(clean.read_bytes())
+    (tmp_path / "map.yaml").write_text("resolution: 0.05\norigin: [0.0, 0.0, 0.0]\n")
+    angles = np.linspace(0.0, 2.0 * np.pi, 180, endpoint=False)
+    lines = [
+        f"{3.0 + 2.0 * np.cos(a):.6f},{3.0 + 2.0 * np.sin(a):.6f},0.500000,0.500000"
+        for a in angles
+    ]
+    (tmp_path / "map.csv").write_text("\n".join(lines) + "\n")
+    track = build_map_track(
+        "m", tmp_path / "map.csv", tmp_path / "map.yaml", clean, "ccw", (60, 8)
+    )
+    spec = MapSpec(
+        image=clean, scale=0.6, threshold=250, direction="ccw", start=(60, 8)
+    )
+    config = Config(
+        sim=SimConfig(),
+        vehicle=VehicleConfig(),
+        sensor=SensorConfig(),
+        race=RaceConfig(),
+        tracks={"m": TrackSpec(name="m", width=0.0, resolution=0.0, map=spec)},
+        baselines={},
+        default_track="m",
+    )
+    msg = json.loads(build_static_message(track, config))
+    assert msg["map_image"] == {
+        "url": "/map-image",
+        "scale": pytest.approx(0.6),
+        "width": 120,
+        "height": 120,
+    }
+    # The server route serves the display image as a PNG.
+    png = pgm_png_bytes(parse_pgm(map_display_image(config, "m")))
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
 
 
 def test_static_message_walls_downsampled_to_one_metre(

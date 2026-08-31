@@ -12,12 +12,16 @@ and scans that do not exist yet.
 
 import json
 import math
+import struct
+import zlib
 from collections.abc import Sequence
+from pathlib import Path
 
 import numpy as np
 
 from cocoracer.config import Config
 from cocoracer.engine import RaceSnapshot
+from cocoracer.pgm import parse_pgm
 from cocoracer.track import Track
 
 _WALL_SEND_SPACING = 1.0
@@ -50,6 +54,64 @@ def _points(points: np.ndarray) -> list[list[float]]:
     return [[float(px), float(py)] for px, py in points]
 
 
+def map_display_image(config: Config, track_name: str) -> Path | None:
+    """The display PGM of a map track, or None for non-map tracks.
+
+    Prefers the ``-gimp`` display variant (the same picture with the wall
+    outlines drawn in); falls back to the clean image when no display
+    variant ships.
+    """
+    spec = config.tracks.get(track_name)
+    map_spec = spec.map if spec is not None else None
+    if map_spec is None:
+        return None
+    display = map_spec.image.with_name(f"{map_spec.image.stem}-gimp.pgm")
+    return display if display.is_file() else map_spec.image
+
+
+def pgm_png_bytes(image: np.ndarray) -> bytes:
+    """Encode a uint8 grayscale image as a PNG (stdlib-only writer)."""
+    height, width = image.shape
+    raw = b"".join(b"\x00" + row.tobytes() for row in image)
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + kind
+            + data
+            + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+        )
+
+    return b"".join(
+        [
+            b"\x89PNG\r\n\x1a\n",
+            chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)),
+            chunk(b"IDAT", zlib.compress(raw)),
+            chunk(b"IEND", b""),
+        ]
+    )
+
+
+def map_image_block(config: Config, track_name: str) -> dict | None:
+    """Placement data for the map's display image, in the track world.
+
+    The world frame of a map track is image pixels times the map's scale
+    (meters per pixel), origin at the image's bottom-left corner, y up.
+    """
+    path = map_display_image(config, track_name)
+    if path is None:
+        return None
+    image = parse_pgm(path)
+    scale = config.tracks[track_name].map.scale
+    height, width = image.shape
+    return {
+        "url": "/map-image",
+        "scale": float(scale),
+        "width": int(width),
+        "height": int(height),
+    }
+
+
 def build_static_message(track: Track, config: Config) -> str:
     """Serialize the track's static data into the connect message."""
     message = {
@@ -67,6 +129,7 @@ def build_static_message(track: Track, config: Config) -> str:
             "left": _point(track.left_wall[0]),
             "right": _point(track.right_wall[0]),
         },
+        "map_image": map_image_block(config, track.name),
     }
     return json.dumps(message)
 

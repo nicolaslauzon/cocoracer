@@ -149,8 +149,27 @@ function prerenderTrack() {
   trackLayer.width = canvas.width;
   trackLayer.height = canvas.height;
   const t = trackLayer.getContext("2d");
-  drawRoad(t);
+  if (staticMsg.map_image) {
+    drawMapImage(t);
+  } else {
+    drawRoad(t);
+  }
   drawStartLine(t);
+}
+
+// The map's display image: world frame is image pixels times the scale,
+// origin at the image's bottom-left corner, y up.
+function drawMapImage(t) {
+  const mi = staticMsg.map_image;
+  const img = new Image();
+  img.onload = () => {
+    const [x0, y0] = view.toPx(0, mi.height * mi.scale);
+    t.imageSmoothingEnabled = false;
+    t.drawImage(img, x0, y0, mi.width * mi.scale, mi.height * mi.scale);
+    drawStartLine(t);
+    draw();
+  };
+  img.src = mi.url;
 }
 
 // The pixel-art F1 sprite: the red channel of its body pixels encodes

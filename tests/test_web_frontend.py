@@ -101,6 +101,33 @@ def test_index_html_draws_the_pixel_art_sprite() -> None:
     assert "fillRect" not in html.split("function drawCar")[1].split("}")[0]
 
 
+def test_index_html_renders_the_map_image(stadium: Track) -> None:
+    html = _index_html()
+    assert "map_image" in html
+    assert "drawMapImage" in html
+    assert "map_image" in _static_field_names(stadium, _any_config())
+
+
+def _any_config() -> Config:
+    from cocoracer.config import (
+        RaceConfig,
+        SensorConfig,
+        SimConfig,
+        TrackSpec,
+        VehicleConfig,
+    )
+
+    return Config(
+        sim=SimConfig(),
+        vehicle=VehicleConfig(),
+        sensor=SensorConfig(),
+        race=RaceConfig(),
+        tracks={"s": TrackSpec(name="s", width=1.0, resolution=0.1)},
+        baselines={},
+        default_track="s",
+    )
+
+
 def test_index_html_has_start_button() -> None:
     html = _index_html()
     assert "<button" in html

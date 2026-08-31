@@ -15,11 +15,17 @@ import time
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 from cocoracer.engine import RaceEngine
-from cocoracer.web.protocol import build_dynamic_message, build_static_message
+from cocoracer.pgm import parse_pgm
+from cocoracer.web.protocol import (
+    build_dynamic_message,
+    build_static_message,
+    map_display_image,
+    pgm_png_bytes,
+)
 
 INDEX_PATH = Path(__file__).with_name("index.html")
 SPRITE_PATH = Path(__file__).with_name("f1-car.png")
@@ -40,6 +46,8 @@ def handle_client_message(message: str, start_queue: queue.Queue[None]) -> None:
 def create_app(engine: RaceEngine, start_queue: queue.Queue[None]) -> FastAPI:
     """Build the live view app for one engine."""
     app = FastAPI()
+    map_path = map_display_image(engine.config, engine.track.name)
+    map_png = pgm_png_bytes(parse_pgm(map_path)) if map_path is not None else None
 
     @app.get("/")
     def index() -> FileResponse:
@@ -48,6 +56,12 @@ def create_app(engine: RaceEngine, start_queue: queue.Queue[None]) -> FastAPI:
     @app.get("/f1-car.png")
     def sprite() -> FileResponse:
         return FileResponse(SPRITE_PATH)
+
+    @app.get("/map-image")
+    def map_image() -> Response:
+        if map_png is None:
+            return Response(status_code=404)
+        return Response(content=map_png, media_type="image/png")
 
     @app.websocket("/ws")
     async def stream(websocket: WebSocket) -> None:
