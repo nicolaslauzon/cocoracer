@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One PNG asset ships with the web package; the page loads and references it
-- [ ] Each vehicle renders as the sprite recolored to its color, tires/outline intact, rotated by yaw, scaled to the vehicle's length and width
-- [ ] The rectangle body and grey window drawing are gone
-- [ ] Frontend structural test: the asset exists and the page references it
-- [ ] All four checks green
+- [x] One PNG asset ships with the web package; the page loads and references it
+- [x] Each vehicle renders as the sprite recolored to its color, tires/outline intact, rotated by yaw, scaled to the vehicle's length and width
+- [x] The rectangle body and grey window drawing are gone
+- [x] Frontend structural test: the asset exists and the page references it
+- [x] All four checks green

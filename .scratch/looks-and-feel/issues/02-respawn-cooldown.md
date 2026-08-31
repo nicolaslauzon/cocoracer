@@ -4,8 +4,8 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `crash_pause` is 2.0 s in the param file and the config default
-- [ ] Config test: the default loads as 2.0 and a param file can override it
-- [ ] All four checks green
+- [x] `crash_pause` is 2.0 s in the param file and the config default
+- [x] Config test: the default loads as 2.0 and a param file can override it
+- [x] All four checks green

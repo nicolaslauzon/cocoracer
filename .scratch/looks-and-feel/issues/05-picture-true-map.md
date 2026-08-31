@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The server serves the display PGM for the selected map
-- [ ] The static message carries the map-image block (URL, resolution, origin, pixel dimensions)
-- [ ] The client renders the image in world coordinates; the road fill and wall-curve overlay drawing are gone
-- [ ] Static-message tests cover the map-image block for each shipped map
-- [ ] Frontend structural test: the page references the map-image fields and no longer references the wall-curve fields for drawing
-- [ ] All four checks green
+- [x] The server serves the display PGM for the selected map
+- [x] The static message carries the map-image block (URL, resolution, origin, pixel dimensions)
+- [x] The client renders the image in world coordinates; the road fill and wall-curve overlay drawing are gone
+- [x] Static-message tests cover the map-image block for each shipped map
+- [x] Frontend structural test: the page references the map-image fields and no longer references the wall-curve fields for drawing
+- [x] All four checks green

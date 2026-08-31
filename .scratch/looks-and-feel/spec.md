@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Spec: Looks & Feel — Crash Xs, Respawn Cooldown, Trails, Pixel-Art Cars, Picture-True Map
 
