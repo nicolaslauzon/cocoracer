@@ -71,9 +71,8 @@ def test_time_trial_stub_dnf_headless(capsys: pytest.CaptureFixture[str]) -> Non
 
 def _temp_params(tmp_path: Path, time_limit: float) -> Path:
     # Track and map paths are relative to the param file, so mirror the
-    # repo layout (params/ beside maps/ and tracks/) under a temp dir.
+    # repo layout (params/ beside maps/) under a temp dir.
     (tmp_path / "params").mkdir()
-    shutil.copytree(PARAMS.parent / "tracks", tmp_path / "params" / "tracks")
     shutil.copytree(REPO_ROOT / "maps", tmp_path / "maps")
     text = PARAMS.read_text().replace("time_limit: 600.0", f"time_limit: {time_limit}")
     assert text != PARAMS.read_text()

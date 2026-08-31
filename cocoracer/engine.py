@@ -1,8 +1,8 @@
 """Deterministic headless race engine.
 
 One single-threaded fixed-step loop (40 Hz). In race mode the field
-starts on a hardcoded F1-style zigzag grid behind the start/finish
-line and holds while the countdown runs; when the countdown ends the lap trackers
+starts on a hardcoded zigzag grid behind the start/finish line and
+holds while the countdown runs; when the countdown ends the lap trackers
 re-anchor at the grid poses, so the first lap is timed from the
 release. Per tick, in order: the controllers that may be stepped
 (racing and ghost) are each handed a fresh full-circle laser scan —

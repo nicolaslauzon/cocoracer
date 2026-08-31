@@ -16,12 +16,9 @@ def _write_params(tmp_path: Path, body: str) -> Path:
 
 def test_default_config_loads() -> None:
     cfg = load_config(PARAMS)
-    assert cfg.default_track == "stadium"
+    assert cfg.default_track == "icra-2023-short"
     assert set(cfg.tracks) == {
         "stadium",
-        "montreal",
-        "spa",
-        "silverstone",
         "right-interior",
         "icra-2023-short",
         "icra-2025",
@@ -56,16 +53,6 @@ def test_segment_track_has_no_centerline() -> None:
     stadium = load_config(PARAMS).tracks["stadium"]
     assert stadium.segments is not None
     assert stadium.centerline is None
-
-
-def test_file_tracks_have_closed_centerlines() -> None:
-    cfg = load_config(PARAMS)
-    for name in ("montreal", "spa", "silverstone"):
-        spec = cfg.tracks[name]
-        assert spec.segments is None
-        assert spec.centerline is not None
-        assert len(spec.centerline) > 100
-        assert spec.centerline[0] == spec.centerline[-1]
 
 
 def test_file_reference_success(tmp_path: Path) -> None:

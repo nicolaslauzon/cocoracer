@@ -1,5 +1,9 @@
 # Import real F1 circuit geodata instead of authoring tracks procedurally
 
+> **Superseded by [ADR-0003](0003-pgm-track-import.md)** — the vendored F1
+> geodata and its import pipeline were removed; the game's tracks are built
+> from PGM images instead. Kept for the history of the decision.
+
 The original plan (issue 09) was to hand-author harder closed-loop tracks as
 segment specs (straights and turns) through the track builder. We instead vendor
 OSM-derived F1 circuit centerlines (`scluba/f1-circuit-geodata`, MIT collection,

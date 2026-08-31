@@ -22,12 +22,6 @@ def stadium(config: Config) -> Track:
     return build_track(config.tracks["stadium"])
 
 
-@pytest.fixture(scope="session")
-def f1_tracks(config: Config) -> dict[str, Track]:
-    names = ("montreal", "spa", "silverstone")
-    return {name: build_track(config.tracks[name]) for name in names}
-
-
 @pytest.fixture
 def synthetic_track_factory() -> Callable[[np.ndarray], Track]:
     """Builds a Track around a hand-made occupancy grid (0.1 m cells)."""

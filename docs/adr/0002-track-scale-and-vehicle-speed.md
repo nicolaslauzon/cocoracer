@@ -1,5 +1,9 @@
 # Run imported tracks at 1:12 scale with a faster vehicle
 
+> **Superseded by [ADR-0003](0003-pgm-track-import.md)** — the tracks are now
+> PGM images at ~0.6 m/px with a fixed real-scale vehicle. Kept for the history
+> of the 1:12 decision.
+
 Full-scale F1 circuits are kilometres long: at 1:1, Spa's wall grid at 0.1 m
 resolution would be ~270M cells (144× the area) and a 10 m/s vehicle would crawl
 across multi-hundred-metre straights. We import at 1:12 (scale 1/12) and raise

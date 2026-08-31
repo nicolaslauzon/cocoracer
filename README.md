@@ -46,7 +46,7 @@ Both take the same options:
 
 | flag | meaning |
 | --- | --- |
-| `--track NAME` | `stadium` (default), `montreal`, `spa`, `silverstone` |
+| `--track NAME` | `icra-2023-short` (default), `right-interior`, `icra-2025`, `stadium` |
 | `--controller PATH[,PATH...]` | controller files to load |
 | `--laps N` | override the lap count |
 | `--no-web` | run headless — no browser, just the results |
@@ -104,7 +104,9 @@ tracks:
     file: tracks/my_circuit.json
 ```
 
-where `my_circuit.json` is `{"width": 1.0, "resolution": 0.1, "centerline": [[x, y], ...]}`. The path is relative to the param file. The centerline must close (last point back near the first), must not self-intersect, and must stay wider than `width`. The F1 circuits — `montreal`, `spa`, `silverstone` — were imported at 1:12 scale this way; see `docs/adr/0002-track-scale-and-vehicle-speed.md`.
+where `my_circuit.json` is `{"width": 1.0, "resolution": 0.1, "centerline": [[x, y], ...]}`. The path is relative to the param file. The centerline must close (last point back near the first), must not self-intersect, and must stay wider than `width`.
+
+The three shipped maps — `right-interior`, `icra-2023-short`, `icra-2025` — are built from PGM images; see `docs/adr/0003-pgm-track-import.md`.
 
 Race on the new track with `--track my_oval`.
 
@@ -123,6 +125,6 @@ All four must come back clean.
 
 - `cocoracer/` — the engine: config, track building, vehicle dynamics, the laser sensor, collision, lap tracking, race state, the CLI, and the web view.
 - `controllers/` — the baselines and the `starter.py` template.
-- `params/` — `default.yaml` and the imported track JSON files.
+- `params/` — `default.yaml` and the per-map track parameters.
 - `tests/` — the test suite.
 - `docs/` — coding style and ADRs.

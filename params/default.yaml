@@ -1,4 +1,4 @@
-default_track: stadium
+default_track: icra-2023-short
 
 simulation:
   tick_hz: 40
@@ -38,13 +38,6 @@ tracks:
       - { type: turn, radius: 40.0, angle: 180.0 }
       - { type: straight, length: 120.0 }
       - { type: turn, radius: 40.0, angle: 180.0 }
-  montreal:
-    file: tracks/montreal.json
-  spa:
-    file: tracks/spa.json
-  silverstone:
-    file: tracks/silverstone.json
-
 maps:
   scale: 0.6
   tracks:

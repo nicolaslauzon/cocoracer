@@ -58,8 +58,8 @@ def build_parser() -> argparse.ArgumentParser:
         "  cocoracer race \\\n"
         "    --controller controllers/starter.py,controllers/pure_pursuit.py,controllers/wall_follow.py\n"
         "\n"
-        "  # three-vehicle race on the Spa circuit for five laps\n"
-        "  cocoracer race --track spa --laps 5 \\\n"
+        "  # three-vehicle race on the icra-2025 track for five laps\n"
+        "  cocoracer race --track icra-2025 --laps 5 \\\n"
         "    --controller controllers/starter.py,controllers/wall_follow.py,controllers/disparity_extender.py\n"
     )
     parser = argparse.ArgumentParser(

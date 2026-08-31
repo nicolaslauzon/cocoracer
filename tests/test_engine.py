@@ -522,7 +522,7 @@ def test_run_releases_a_waiting_engine(stadium: Track, config: Config) -> None:
     assert 1.0 <= result.time < 1.05
 
 
-# The hardcoded F1 zigzag: pole on the centerline 3.75 m behind the
+# The hardcoded zigzag: pole on the centerline 3.75 m behind the
 # line, then 2.5 m right, left, right, ... at 3.75 m rows.
 _ZIGZAG_ROWS = 3.75
 _ZIGZAG_LATERAL = (0.0, -2.5, 2.5, -2.5, 2.5)
@@ -547,17 +547,6 @@ def test_race_mode_starts_on_zigzag_grid(stadium: Track, config: Config) -> None
         stadium, config, drivers, [f"v{i}" for i in range(5)], mode="race"
     )
     _assert_zigzag(stadium, engine)
-
-
-def test_zigzag_grid_is_identical_on_other_tracks(
-    f1_tracks: dict[str, Track], config: Config
-) -> None:
-    track = f1_tracks["montreal"]
-    drivers: list[Controller] = [StepCounter(2.0) for _ in range(5)]
-    engine = RaceEngine(
-        track, config, drivers, [f"v{i}" for i in range(5)], mode="race"
-    )
-    _assert_zigzag(track, engine)
 
 
 def test_countdown_holds_vehicles_still_and_silent(
