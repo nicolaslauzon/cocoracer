@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] P5 parse produces a boolean drivable mask at the image's dimensions
 - [x] Threshold default 250, overridable per track; a synthetic PGM in a temp dir verifies the override

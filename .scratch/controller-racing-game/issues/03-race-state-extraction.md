@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately; 02 is done)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `RaceState` owns the max-crashes DNF, the timeout DNF, and the finish rule (FINISHED + finish time at the lap target)
 - [x] `tests/test_race_state.py` pins the 80-tick cycle (20 Pause + 60 Ghost) with no engine, driver, or track: `crash()` → 20×`advance()` → 60×`advance()` → RACING

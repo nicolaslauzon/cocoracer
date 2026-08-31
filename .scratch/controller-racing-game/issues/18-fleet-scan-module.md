@@ -4,7 +4,7 @@
 
 **Blocked by:** (none)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `fleet_scan` returns (N, B) aligned to the fleet; first hit wins; no hit reads inf
 - [x] Only racing vehicles block a beam; no vehicle sees itself

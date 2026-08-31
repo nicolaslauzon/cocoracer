@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 (Vehicle visibility in scan)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `race` CLI runs two controllers end-to-end headless with grid + countdown; the results table prints
 - [x] Vehicle-to-vehicle collision triggers the same reset/pause/ghost flow as a wall crash (engine-seam test with two scripted vehicles); a ghost vehicle cannot be re-collided

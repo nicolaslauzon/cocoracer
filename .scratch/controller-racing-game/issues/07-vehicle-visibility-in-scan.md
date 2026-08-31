@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 (Wall scan + controller contract)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A racing vehicle appears in another vehicle's scan at the correct distance (engine-seam test)
 - [x] A ghost vehicle and a paused vehicle are absent from the scan (engine-seam tests)

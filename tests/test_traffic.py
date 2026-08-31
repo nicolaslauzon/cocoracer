@@ -94,9 +94,11 @@ def _no_countdown(config: Config) -> Config:
     )
 
 
-def test_collision_in_traffic_resets_to_centerline(
+def test_collision_in_traffic_penalizes_only_the_instigator(
     stadium: Track, config: Config
 ) -> None:
+    # The chaser (2.0 m/s) rear-ends the parked target; the chaser is the
+    # instigator and is penalized, while the target keeps racing untouched.
     engine = RaceEngine(
         stadium,
         _no_countdown(config),
@@ -107,23 +109,25 @@ def test_collision_in_traffic_resets_to_centerline(
     chaser, target, bystander = engine.vehicles
     chaser.x, chaser.y, chaser.yaw = 2.0, 0.0, 0.0
     target.x, target.y, target.yaw = 4.0, 0.0, 0.0
-    bystander.x, bystander.y, bystander.yaw = 5.5, 0.0, 0.0
+    bystander.x, bystander.y, bystander.yaw = 12.0, 0.0, 0.0
     while chaser.state.is_racing and target.state.is_racing:
         engine.tick()
+    # The instigator is penalized once: paused, motion zeroed, crash recorded.
     assert chaser.state.status is VehicleStatus.PAUSED
-    assert target.state.status is VehicleStatus.PAUSED
     assert chaser.state.crashes == 1
-    assert target.state.crashes == 1
-    for v in (chaser, target):
-        assert v.speed == 0.0
-        assert v.target_speed == 0.0
-        assert v.steering == 0.0
-        assert v.target_steering == 0.0
-        _, lateral, _ = stadium.to_frenet(v.x, v.y, v.yaw)
-        assert abs(lateral) < 1e-4
+    assert chaser.last_crash is not None
+    assert chaser.speed == 0.0
+    assert chaser.target_speed == 0.0
+    assert chaser.steering == 0.0
+    # The innocent target keeps racing, completely untouched.
+    assert target.state.status is VehicleStatus.RACING
+    assert target.state.crashes == 0
+    assert target.last_crash is None
+    assert (target.x, target.y, target.yaw) == (4.0, 0.0, 0.0)
+    # The bystander is untouched too.
     assert bystander.state.status is VehicleStatus.RACING
     assert bystander.state.crashes == 0
-    assert (bystander.x, bystander.y, bystander.yaw) == (5.5, 0.0, 0.0)
+    assert (bystander.x, bystander.y, bystander.yaw) == (12.0, 0.0, 0.0)
 
 
 def test_ghost_cannot_be_recollided_in_traffic(stadium: Track, config: Config) -> None:

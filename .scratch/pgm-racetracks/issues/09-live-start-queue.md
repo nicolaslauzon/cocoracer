@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 (engine waiting phase).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A live run begins in phase `waiting` with the sim clock frozen
 - [x] A `start` message over the WebSocket releases the field on the next tick

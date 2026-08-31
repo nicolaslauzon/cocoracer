@@ -4,7 +4,7 @@
 
 **Blocked by:** 12 (Web protocol + server)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The track is rendered once (offscreen prerender), cars animate with correct heading, and the HUD updates on each dynamic message
 - [x] The HUD shows lap, speed, status, crash count, best/last lap, and the race timer

@@ -1,5 +1,6 @@
 """Tests for batched crash detection: walls, pairs, one crash per tick."""
 
+import math
 from collections.abc import Callable
 
 import numpy as np
@@ -144,12 +145,87 @@ def test_wall_hits_drop_out_of_the_pair_pass(
     assert b.state.crashes == 1
 
 
+def test_rear_end_penalizes_only_the_follower(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    # Leader ahead, slower follower closing from behind along +x.
+    track = _walled_track(synthetic_track_factory)
+    follower = _vehicle(track, 1.0, 1.5)
+    leader = _vehicle(track, 1.3, 1.5)
+    follower.yaw = 0.0
+    follower.speed = 5.0
+    leader.speed = 0.0
+    assert collide(track, [follower, leader], LENGTH, WIDTH, RADIUS) == [follower]
+
+
+def test_side_swipe_penalizes_only_the_crosser(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    # Target holds its line along +x; crosser drives vertically into it.
+    track = _walled_track(synthetic_track_factory)
+    target = _vehicle(track, 1.0, 1.5)
+    crosser = _vehicle(track, 1.2, 1.2)
+    target.speed = 2.0  # closing toward the crosser is ~0 (the +x direction)
+    target.yaw = 0.0
+    crosser.yaw = math.pi / 2
+    crosser.speed = 4.0
+    assert collide(track, [crosser, target], LENGTH, WIDTH, RADIUS) == [crosser]
+
+
+def test_head_on_penalizes_both(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    # Two cars moving toward each other on the same line.
+    track = _walled_track(synthetic_track_factory)
+    a = _vehicle(track, 1.0, 1.5)
+    b = _vehicle(track, 1.3, 1.5)
+    a.yaw = 0.0
+    a.speed = 3.0
+    b.yaw = math.pi
+    b.speed = 3.0
+    assert collide(track, [a, b], LENGTH, WIDTH, RADIUS) == [a, b]
+
+
+def test_stationary_overlap_penalizes_both(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    # Both stopped but within the collision distance: mutual fault.
+    track = _walled_track(synthetic_track_factory)
+    a = _vehicle(track, 1.0, 1.5)
+    b = _vehicle(track, 1.3, 1.5)
+    assert collide(track, [a, b], LENGTH, WIDTH, RADIUS) == [a, b]
+
+
+def test_instigator_is_penalized_and_only_victim_keeps_racing(
+    synthetic_track_factory: Callable[[np.ndarray], Track],
+) -> None:
+    # a rear-ends b (its lone in-range pair). c sits clear of b (>RADIUS), so
+    # b is involved in only the (a, b) pair and is its victim: it keeps racing
+    # untouched while a takes the single penalty.
+    track = _walled_track(synthetic_track_factory)
+    a = _vehicle(track, 0.6, 1.5)
+    b = _vehicle(track, 0.9, 1.5)
+    c = _vehicle(track, 1.5, 1.5)
+    a.yaw = 0.0
+    a.speed = 5.0
+    crashed = collide(track, [a, b, c], LENGTH, WIDTH, RADIUS)
+    assert crashed == [a]
+    for v in crashed:
+        v.crash(track)
+    assert a.state.crashes == 1
+    assert b.state.crashes == 0
+    assert c.state.crashes == 0
+    assert b.state.status is VehicleStatus.RACING
+    assert c.state.status is VehicleStatus.RACING
+    assert b.last_crash is None
+
+
 def test_a_vehicle_takes_at_most_one_crash_per_tick(
     synthetic_track_factory: Callable[[np.ndarray], Track],
 ) -> None:
-    # a-b and b-c are both below RADIUS. The old snapshot ordering
-    # crashed b twice in this one tick; the pair pass consumes b in the
-    # (a, b) pair, so (b, c) is skipped and c survives this tick.
+    # a-b and b-c are both below RADIUS; both stationary, so each in-range
+    # pair is mutual. The pair pass consumes b in the (a, b) pair, so (b, c)
+    # is skipped and c survives this tick.
     track = _walled_track(synthetic_track_factory)
     a = _vehicle(track, 0.6, 1.5)
     b = _vehicle(track, 1.0, 1.5)

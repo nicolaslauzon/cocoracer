@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (Extract RaceState) — sequencing only, both refactors touch the engine
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `tests/test_lap_tracker.py`: a monotone s-sequence that passes the checkpoint books a lap with the right lap time; an oscillating s-sequence across the start line without the checkpoint books no lap (no engine, no driver)
 - [x] `tracker.resync(s)` after a crash reset produces no spurious lap

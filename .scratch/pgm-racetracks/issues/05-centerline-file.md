@@ -6,7 +6,7 @@
 
 **Blocked by:** 03 (wall-curve track model), 04 (PGM parse and drivable mask).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] CSV + YAML parse: native meters converted to track world (corner origin, y-up, × scale/resolution)
 - [x] Wall curves are pointwise normal offsets of the resampled centerline; median wall-to-wall distance ≈ scaled `w_left + w_right`

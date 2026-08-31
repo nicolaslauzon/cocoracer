@@ -4,7 +4,7 @@
 
 **Blocked by:** 13 (Web front end), 14 (Wall-follow baseline), 15 (Gap-follow baseline), 16 (Multi-vehicle traffic + tick budget)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] README quickstart works end-to-end from a fresh clone: install → copy stub → run time trial → run head2head vs a baseline → watch the web view
 - [x] The stub documents the tick contract (state fields, laser scan, `np.inf` no-hit, outputs, internal state) and points at the vehicle limits in the param file

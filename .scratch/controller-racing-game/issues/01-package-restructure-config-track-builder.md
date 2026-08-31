@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Repo is a package; old experimental scripts removed; dependencies updated (add YAML parsing, web server, pytest; drop teleop/matplotlib deps)
 - [x] All game settings live in the one param file and load into typed config objects

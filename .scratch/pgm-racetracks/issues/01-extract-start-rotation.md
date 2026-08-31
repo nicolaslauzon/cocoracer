@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Rotation logic callable from the track module on any closed centerline
 - [x] F1 importer delegates to the helper; all existing importer tests pass unchanged, including the committed-file match test

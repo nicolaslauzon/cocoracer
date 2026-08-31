@@ -55,18 +55,12 @@ def _points(points: np.ndarray) -> list[list[float]]:
 
 
 def map_display_image(config: Config, track_name: str) -> Path | None:
-    """The display PGM of a map track, or None for non-map tracks.
-
-    Prefers the ``-gimp`` display variant (the same picture with the wall
-    outlines drawn in); falls back to the clean image when no display
-    variant ships.
-    """
+    """The simulation's base PGM for a map track, or None otherwise."""
     spec = config.tracks.get(track_name)
     map_spec = spec.map if spec is not None else None
     if map_spec is None:
         return None
-    display = map_spec.image.with_name(f"{map_spec.image.stem}-gimp.pgm")
-    return display if display.is_file() else map_spec.image
+    return map_spec.image
 
 
 def pgm_png_bytes(image: np.ndarray) -> bytes:

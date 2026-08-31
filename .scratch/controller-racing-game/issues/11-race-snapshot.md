@@ -4,7 +4,7 @@
 
 **Blocked by:** 10 (Dynamics seam)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `RaceSnapshot` is a frozen dataclass in `engine.py` with the field list above; `engine.snapshot()` is a pure read of the current state
 - [x] `run_race` and the headless path never call `snapshot()`

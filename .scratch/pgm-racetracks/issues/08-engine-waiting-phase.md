@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] An engine constructed without auto-start is in phase `waiting`
 - [x] Ticks while waiting advance nothing: time frozen at 0.0, vehicle state unchanged

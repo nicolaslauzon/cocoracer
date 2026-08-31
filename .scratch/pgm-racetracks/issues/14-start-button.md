@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 (live start queue), 10 (static protocol rework, for the `waiting` phase in the dynamic message).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The Start button is visible exactly while the phase is `waiting`
 - [x] Pressing it sends the start message, which releases the field and begins the countdown

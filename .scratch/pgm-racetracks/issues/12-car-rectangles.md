@@ -4,7 +4,7 @@
 
 **Blocked by:** 10 (static protocol rework, for the vehicle dimensions).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The car body is a rectangle at the true vehicle length × width, rotated by heading
 - [x] Two black wheel bars sit across the front and rear axles; a grey front window is present

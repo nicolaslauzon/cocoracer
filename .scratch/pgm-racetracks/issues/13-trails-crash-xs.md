@@ -4,7 +4,7 @@
 
 **Blocked by:** 10 (static protocol rework, for the world scale).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Each car's trail accumulates from the dynamic messages and keeps the last half lap of driven arc length
 - [x] The trail is faded by age

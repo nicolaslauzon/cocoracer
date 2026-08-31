@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Ghost driving — behaviour change)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A vehicle facing a known wall reads the correct distance on the beam(s) pointing at it (engine-seam test with known geometry)
 - [x] Beams with no obstacle report `np.inf`

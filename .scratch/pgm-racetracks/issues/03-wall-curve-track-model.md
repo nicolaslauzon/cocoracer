@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 (real-scale vehicle and rescaled stadium).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Track exposes centerline, left/right wall curves, and the occupancy grid; no constant half-width remains
 - [x] Stadium and centerline-JSON tracks build with synthesized ±width/2 walls; reported width equals the configured width

@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `_GAINS` is `_PARAMETERS` in all three baselines and the `gains` locals are `parameters`
 - [x] Docstrings read "Every parameter comes from the param file"

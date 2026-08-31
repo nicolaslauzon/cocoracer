@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (centerline file, parse, scale, and wall derivation).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A synthetic map builds end to end: three files → Frenet-ready track with derived walls and the drivable mask (upsampled 2×, 0.3 m cells) as the occupancy grid
 - [x] Direction key is honored: reversing it reverses the centerline and swaps the left/right walls

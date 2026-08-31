@@ -17,7 +17,7 @@ Docs are part of this ticket: `CONTEXT.md` — the Ghost entry gains "the contro
 
 **Blocked by:** 03 (Extract RaceState), 04 (Extract LapTracker)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A Ghost vehicle is driven by its controller during the 1.5 s Ghost phase (engine-seam test with a scripted driver); the wall check and the lap feed skip it (the vehicle-collision gate lands with 08)
 - [x] `may_step` = RACING or GHOST, `is_racing` = RACING; the crash costs pause-only time (the ghost phase overlaps with driving)

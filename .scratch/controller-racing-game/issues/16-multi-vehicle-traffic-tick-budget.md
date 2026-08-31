@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 (Pure-pursuit reference)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `race` CLI runs N ≥ 3 controllers end-to-end headless with a valid results table for all vehicles
 - [x] Crash/ghost behavior is correct in traffic (engine-seam test: a colliding vehicle resets to the centerline; a ghost vehicle cannot be re-collided; racing vehicles remain visible in scans, ghosts absent)

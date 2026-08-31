@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 (Pure-pursuit reference)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Disparity extender completes N laps on the stadium track (headless run)
 - [x] All gains (car width, wheelbase, P/D gains, speed curve, friction, disparity threshold) are parameters in the param file

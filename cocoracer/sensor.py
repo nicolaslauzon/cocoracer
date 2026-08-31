@@ -82,4 +82,4 @@ def _vehicle_hits(
     t = np.where((disc >= 0.0) & (t > 0.0), t, np.inf)
     own = np.arange(m)[None, None, :] == exclude[:, None, None]
     t = np.where(own, np.inf, t)
-    return t.min(axis=2).reshape(n, b)
+    return np.asarray(t.min(axis=2).reshape(n, b))

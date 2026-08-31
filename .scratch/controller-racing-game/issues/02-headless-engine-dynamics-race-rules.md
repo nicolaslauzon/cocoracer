@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Package restructure + config + track builder)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `time-trial` runs headless with the stub: car drives forward, hits the wall, resets to the centerline, pauses 0.5 s, ghosts 1.5 s, and DNFs at max crashes; results print with crash count and DNF reason
 - [x] A car commanded straight at constant speed stays on a straight (engine-seam test through the deterministic headless entry point)

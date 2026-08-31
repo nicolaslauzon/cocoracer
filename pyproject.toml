@@ -19,7 +19,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.5", "mypy>=1.10"]
+dev = [
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "scipy-stubs>=1.11",
+    "types-PyYAML>=6.0",
+]
 
 [project.scripts]
 cocoracer = "cocoracer.cli:main"

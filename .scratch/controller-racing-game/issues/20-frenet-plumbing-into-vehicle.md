@@ -4,7 +4,7 @@
 
 **Blocked by:** 18, 19
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `anchor` re-anchors the lap tracker at the current pose and time (construction and countdown release)
 - [x] `record` feeds the tracker and books the lap with the race state; non-racing vehicles are not fed

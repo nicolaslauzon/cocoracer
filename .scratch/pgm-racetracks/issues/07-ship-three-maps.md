@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 (direction key, start line, occupancy grid, and end-to-end map build).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] All three maps build at construction with no errors; derived walls pass the mask consistency check
 - [x] Each map's median width matches the CSV's `w_left + w_right` scaled to track world within tolerance (right-interior ~20 m, icra-2023-short ~20 m, icra-2025 ~17 m)

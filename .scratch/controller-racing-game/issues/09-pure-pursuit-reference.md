@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 (Race mode)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Pure pursuit completes N laps on the stadium track (the first winning run of a lap-based race)
 - [x] Head2head pure pursuit vs open-loop stub: pure pursuit finishes, stub DNFs

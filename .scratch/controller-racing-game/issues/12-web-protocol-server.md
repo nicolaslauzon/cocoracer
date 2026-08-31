@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 (Race mode), 11 (RaceSnapshot)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Protocol: one static message on connect, then dynamic snapshots only; `null` for no-hit; all vehicle statuses (racing, paused, ghost, finished, DNF) are represented
 - [x] The protocol serializer is a pure function and is tested for the static and dynamic message shapes (no server/socket tests)

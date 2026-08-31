@@ -4,7 +4,7 @@
 
 **Blocked by:** 09 (Pure-pursuit reference)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Wall follow completes N laps on the stadium track (headless run)
 - [x] All gains (target wall distance, P and D gains, v_ref, steering-speed factor, sector angles) are parameters in the param file and changing them changes behavior

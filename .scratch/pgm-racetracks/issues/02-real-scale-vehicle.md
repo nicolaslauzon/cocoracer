@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Vehicle geometry and limits come from the param file; minimum turning radius (~3.2 m) clears the tightest stadium corners
 - [x] Collision distance, grid spacing, and time limit updated; unchanged values (laps, pause, ghost, crash limit, countdown) untouched

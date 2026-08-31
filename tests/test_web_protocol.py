@@ -78,7 +78,7 @@ def test_static_message_carries_the_map_image_block(tmp_path: Path) -> None:
     header = b"P5\n120 120\n255\n"
     clean.write_bytes(header + image.tobytes())
     display = tmp_path / "map-gimp.pgm"
-    display.write_bytes(clean.read_bytes())
+    display.write_bytes(b"P5\n1 1\n255\n\x00")
     (tmp_path / "map.yaml").write_text("resolution: 0.05\norigin: [0.0, 0.0, 0.0]\n")
     angles = np.linspace(0.0, 2.0 * np.pi, 180, endpoint=False)
     lines = [
@@ -108,9 +108,10 @@ def test_static_message_carries_the_map_image_block(tmp_path: Path) -> None:
         "width": 120,
         "height": 120,
     }
-    # The server route serves the display image as a PNG.
+    # The server route serves the base image used by the simulation, not the
+    # decorative display variant.
     served = map_display_image(config, "m")
-    assert served is not None
+    assert served == clean
     png = pgm_png_bytes(parse_pgm(served))
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
 

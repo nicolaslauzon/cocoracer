@@ -4,7 +4,7 @@
 
 **Blocked by:** 10 (static protocol rework).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The road is filled between the two wall curves, not a constant-width band
 - [x] A dashed centerline is drawn over the road

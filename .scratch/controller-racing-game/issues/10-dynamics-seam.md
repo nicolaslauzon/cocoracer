@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Ghost driving — behaviour change) — sequencing, both touch the engine tick
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `Dynamics.step` takes (N, 5) states plus (N, 2) commands and returns (N, 5); `pack_state` is gone; the (N, 7) packing is private to the kernel
 - [x] The column order appears in exactly one place (the dynamics docstring); `mypy` is clean

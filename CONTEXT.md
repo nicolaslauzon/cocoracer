@@ -68,11 +68,19 @@ until the race is started.
 _Avoid_: lobby, armed, pre-race
 
 **Crash**:
-The event of a racing vehicle touching a wall or closing within the collision
-distance of another racing vehicle; the vehicle's motion is zeroed and it
-takes a pause, or a DNF at the crash limit, and unless it is a DNF it is
-reset to the nearest centerline pose.
+The event of a racing vehicle touching a wall, or closing within the collision
+distance of another racing vehicle as the instigator; the vehicle's motion is
+zeroed and it takes a pause, or a DNF at the crash limit, and unless it is a DNF
+it is reset to the nearest centerline pose. In a vehicle-to-vehicle collision
+only the instigator incurs this penalty; the innocent vehicle is untouched.
 _Avoid_: accident, wreck, spin
+
+**Instigator**:
+The vehicle at fault in a vehicle-to-vehicle collision, decided per pair by
+which vehicle's closing velocity toward the other is larger; a head-on or
+stationary overlap is mutual and both are instigators. The innocent party keeps
+racing with no penalty.
+_Avoid_: culprit, at-fault car, aggressor
 
 **Time trial**:
 A race mode in which one controller races alone for a fixed lap count.

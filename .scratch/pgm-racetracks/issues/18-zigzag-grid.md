@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Grid poses on any track (stadium and a synthetic track): pole on the centerline 3.75 m behind the line, then ±2.5 m alternating at 3.75 m rows
 - [x] `grid_spacing` is gone from the param file and the config loader; existing params load without it

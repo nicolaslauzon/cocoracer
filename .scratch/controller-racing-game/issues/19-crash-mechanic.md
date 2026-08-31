@@ -4,7 +4,7 @@
 
 **Blocked by:** 18
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `Vehicle.crash(track)` owns the full consequence; DNF skips the reset
 - [x] `collide` reports wall hits before vehicle hits; at most one entry per vehicle

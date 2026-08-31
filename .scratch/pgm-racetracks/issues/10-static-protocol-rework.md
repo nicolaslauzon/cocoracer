@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (wall-curve track model).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The static message contains the wall curves, track length, vehicle dimensions, and start line
 - [x] The static message no longer contains the occupied-cell list or a constant width
