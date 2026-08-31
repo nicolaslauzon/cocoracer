@@ -4,12 +4,12 @@
 
 **Blocked by:** 01 (extract start-rotation, so the importer's deletion loses nothing), 07 (ship the three maps, so the default flip lands on working tracks).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The importer module, its tests, the vendored geodata and source note, the three F1 JSONs, their param entries, and the F1 fixture are deleted
-- [ ] `rotate_to_straightest_start` and `_segment_turns` in the track module are deleted with their tests (the F1 importer was their only user; map starts are pixel-specified)
-- [ ] No reference to F1 or the geodata remains in the codebase
-- [ ] The default track is `icra-2023-short`; CLI and README examples use the new track names
-- [ ] A new ADR records the PGM import, the ~0.6 m/px scale, and the one-eighth vehicle rule
-- [ ] ADRs 0001 and 0002 carry superseded-by headers pointing at the new ADR and are not deleted
-- [ ] All four checks green
+- [x] The importer module, its tests, the vendored geodata and source note, the three F1 JSONs, their param entries, and the F1 fixture are deleted
+- [x] `rotate_to_straightest_start` and `_segment_turns` in the track module are deleted with their tests (the F1 importer was their only user; map starts are pixel-specified)
+- [x] No reference to F1 or the geodata remains in the codebase
+- [x] The default track is `icra-2023-short`; CLI and README examples use the new track names
+- [x] A new ADR records the PGM import, the ~0.6 m/px scale, and the one-eighth vehicle rule
+- [x] ADRs 0001 and 0002 carry superseded-by headers pointing at the new ADR and are not deleted
+- [x] All four checks green
