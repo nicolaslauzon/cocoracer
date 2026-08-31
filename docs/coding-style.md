@@ -14,7 +14,7 @@ before committing:
 ruff format .
 ruff check .
 mypy cocoracer tests
-pytest
+pytest -m "not slow"
 ```
 
 ## Formatting

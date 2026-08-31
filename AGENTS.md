@@ -7,7 +7,7 @@ Always run all four checks before committing:
 ruff format .
 ruff check .
 mypy cocoracer tests
-pytest
+pytest -m "not slow"
 ```
 
 ## Running & verifying
@@ -35,8 +35,8 @@ Before committing:
 ruff format .
 ruff check .
 mypy cocoracer tests
-pytest              # fast suite — always
-pytest -m slow      # slow suite — when touching engine/baselines
+pytest -m "not slow"  # fast suite — always
+pytest -m slow        # slow suite — when touching engine/baselines
 pytest --durations=0 -v  # regenerate timing data if tests change
 ```
 
