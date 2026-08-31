@@ -59,7 +59,7 @@ class SensorConfig:
 class RaceConfig:
     laps: int = 3
     time_limit: float = 600.0
-    crash_pause: float = 0.5
+    crash_pause: float = 2.0
     ghost_duration: float = 1.5
     collision_distance: float = 2.5
     max_crashes: int = 5
@@ -272,7 +272,7 @@ def load_config(path: Path | str) -> Config:
     race = RaceConfig(
         laps=int(race_raw.get("laps", 3)),
         time_limit=float(race_raw.get("time_limit", 600.0)),
-        crash_pause=float(race_raw.get("crash_pause", 0.5)),
+        crash_pause=float(race_raw.get("crash_pause", 2.0)),
         ghost_duration=float(race_raw.get("ghost_duration", 1.5)),
         collision_distance=float(race_raw.get("collision_distance", 2.5)),
         max_crashes=int(race_raw.get("max_crashes", 5)),

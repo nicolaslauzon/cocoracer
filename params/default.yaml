@@ -23,7 +23,7 @@ sensor:
 race:
   laps: 3
   time_limit: 600.0
-  crash_pause: 0.5
+  crash_pause: 2.0
   ghost_duration: 1.5
   collision_distance: 2.5
   max_crashes: 5

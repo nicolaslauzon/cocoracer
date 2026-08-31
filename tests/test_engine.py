@@ -124,15 +124,20 @@ def test_crash_resets_to_centerline_then_pause_and_ghost(
     _, lateral, _ = stadium.to_frenet(v.x, v.y, v.yaw)
     assert abs(lateral) < 1e-4
     _reposition_to_wall(v)
+    pause_ticks = int(round(config.race.crash_pause / config.sim.tick_dt))
+    ghost_ticks = int(round(config.race.ghost_duration / config.sim.tick_dt))
+    observed_pause = pause_ticks - 1  # the timer advances on the first tick
     statuses: list[VehicleStatus] = []
-    for _ in range(81):
+    for _ in range(observed_pause + ghost_ticks + 1):
         engine.tick()
         statuses.append(v.state.status)
-    assert statuses[:19] == [VehicleStatus.PAUSED] * 19
-    assert statuses[19:79] == [VehicleStatus.GHOST] * 60
+    assert statuses[:observed_pause] == [VehicleStatus.PAUSED] * observed_pause
+    assert statuses[observed_pause : observed_pause + ghost_ticks] == [
+        VehicleStatus.GHOST
+    ] * ghost_ticks
     # The ghost drove through the wall, so it re-crashes the moment it
     # returns to racing.
-    assert statuses[79] is VehicleStatus.PAUSED
+    assert statuses[observed_pause + ghost_ticks] is VehicleStatus.PAUSED
     assert v.state.crashes == 2
 
 
@@ -626,13 +631,22 @@ def test_vehicle_collision_resets_both_to_pause_and_ghost(
         _, lateral, _ = stadium.to_frenet(v.x, v.y, v.yaw)
         assert abs(lateral) < 1e-4
     statuses: list[tuple[VehicleStatus, VehicleStatus]] = []
-    for _ in range(79):
+    pause_ticks = int(round(config.race.crash_pause / config.sim.tick_dt))
+    ghost_ticks = int(round(config.race.ghost_duration / config.sim.tick_dt))
+    observed_pause = pause_ticks - 1  # the timer advances on the first tick
+    for _ in range(observed_pause + ghost_ticks):
         engine.tick()
         statuses.append((chaser.state.status, target.state.status))
     # Both pause, ghost, and re-race in lockstep; ghosts cannot
     # re-collide, so the crash count does not move.
-    assert all(s == (VehicleStatus.PAUSED, VehicleStatus.PAUSED) for s in statuses[:19])
-    assert all(s == (VehicleStatus.GHOST, VehicleStatus.GHOST) for s in statuses[19:79])
+    assert all(
+        s == (VehicleStatus.PAUSED, VehicleStatus.PAUSED)
+        for s in statuses[:observed_pause]
+    )
+    assert all(
+        s == (VehicleStatus.GHOST, VehicleStatus.GHOST)
+        for s in statuses[observed_pause : observed_pause + ghost_ticks]
+    )
     assert chaser.state.crashes == 1
     assert target.state.crashes == 1
 

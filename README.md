@@ -72,7 +72,7 @@ The last two use only the laser scan — the same sensor your controller gets �
 
 Touching a wall (your footprint meets the grid) or clipping another *racing* car within 0.5 m is a crash. The car is reset to the nearest centerline pose with speed and steering zeroed, then:
 
-1. **Paused** for 0.5 s — coasts to a stop, immune to collisions.
+1. **Paused** for 2 s — sits stopped, immune to collisions.
 2. **Ghost** for 1.5 s — still being driven, but immune to collisions.
 3. Back to **racing** — vulnerable again.
 

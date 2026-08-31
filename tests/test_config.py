@@ -30,6 +30,30 @@ def test_race_block_has_no_grid_spacing() -> None:
     assert not hasattr(cfg.race, "grid_spacing")
 
 
+def test_crash_pause_defaults_to_two_seconds() -> None:
+    cfg = load_config(PARAMS)
+    assert cfg.race.crash_pause == pytest.approx(2.0)
+
+
+def test_crash_pause_is_player_tunable(tmp_path: Path) -> None:
+    path = _write_params(
+        tmp_path,
+        "race:\n"
+        "  crash_pause: 1.0\n"
+        "tracks:\n"
+        "  t1:\n"
+        "    width: 1.0\n"
+        "    resolution: 0.1\n"
+        "    centerline:\n"
+        "      - [0.0, 0.0]\n"
+        "      - [1.0, 0.0]\n"
+        "      - [1.0, 1.0]\n"
+        "      - [0.0, 1.0]\n",
+    )
+    cfg = load_config(path)
+    assert cfg.race.crash_pause == pytest.approx(1.0)
+
+
 def test_legacy_grid_spacing_key_is_ignored(tmp_path: Path) -> None:
     path = _write_params(
         tmp_path,
