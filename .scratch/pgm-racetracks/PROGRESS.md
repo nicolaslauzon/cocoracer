@@ -1,6 +1,6 @@
 # pgm-racetracks — progress
 
-Updated 2026-08-29. Master at `647ef43`, 241 tests passing.
+Updated 2026-08-29. Master at `dea1cb8`, fast suite 247 passing + 18 slow (player-verified).
 
 ## Done (merged to master)
 
@@ -8,17 +8,19 @@ Updated 2026-08-29. Master at `647ef43`, 241 tests passing.
 - 11, 12, 13, 14 — web view: road fill, true-scale car rectangles, fading trails + crash X, Start button (merge `c15f4d6`)
 - 05 — centerline file: parse, scale, wall derivation, mask consistency (`cocoracer/maptrack.py`)
 - 18 — hardcoded F1 zigzag start grid; `grid_spacing` removed from config and params
+- 06 — direction key, start-line re-fit, occupancy grid, `maps` config section, end-to-end map build
+- 07 — three maps shipped, CLI-selectable; directions: right-interior ccw, icra-2023-short ccw, icra-2025 cw
 
 ## Remaining
 
-Chain, in order: **06 → 07 → 16 → 17**.
+Chain, in order: **16 → 17** (17 is blocked by 16: the track set and default must be final).
 
 ## Resume
 
-1. Dispatch the ticket 06 agent in `/tmp/opencode/wt-pgm-06` (branch `pgm-06`, at master). If the directory is gone (it lives in /tmp): `git worktree add /tmp/opencode/wt-pgm-06 pgm-06 && git -C /tmp/opencode/wt-pgm-06 merge --ff-only master`. The brief is the ticket file plus the spec's "Start/finish", "Direction", and "Scale and grid" bullets.
-2. When it returns: run the four checks, merge the branch into master, tick the ticket's boxes, commit the tick-off.
-3. Repeat for 07, then 16, then 17.
-Tooling: worktrees have no `.venv` — run `/home/nilau28/cocoracer/.venv/bin/python -m ruff format .`, `-m ruff check .`, `-m mypy cocoracer tests`, `-m pytest` from the worktree root. Full pytest is ~12 min; that dominates the chain's wall time.
+1. Dispatch the ticket 16 agent in `/tmp/opencode/wt-pgm-16` (branch `pgm-16`, at master). If the directory is gone (it lives in /tmp): `git worktree add /tmp/opencode/wt-pgm-16 pgm-16 && git -C /tmp/opencode/wt-pgm-16 merge --ff-only master`. The brief is the ticket file plus the spec's "F1 removal" and "Stadium" bullets and the ADR notes in "Further Notes".
+2. When it returns: run the four checks, merge the branch into master, tick the ticket's boxes, commit the tick-off, push.
+3. Then dispatch 17 (baseline re-tune) the same way.
+Tooling: worktrees have no `.venv` — run `/home/nilau28/cocoracer/.venv/bin/python -m ruff format .`, `-m ruff check .`, `-m mypy cocoracer tests` from the worktree root. Tests are two-tier: `pytest -m "not slow"` (~35 s) for the dev loop, `pytest -m slow` (~10 min) when touching engine/baselines. Slow-test map: `tests/MAP.md`.
 
 ## Map data notes
 

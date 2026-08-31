@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] All three maps build at construction with no errors; derived walls pass the mask consistency check
-- [ ] Each map's median width matches the CSV's `w_left + w_right` scaled to track world within tolerance (right-interior ~20 m, icra-2023-short ~20 m, icra-2025 ~17 m)
-- [ ] Each map's start line is at its configured pixel and its direction matches the param-file key
-- [ ] A brief headless run ticks cleanly on each map (full lap-progress bar arrives in ticket 17)
-- [ ] The default track is unchanged until ticket 16 flips it
+- [x] All three maps build at construction with no errors; derived walls pass the mask consistency check
+- [x] Each map's median width matches the CSV's `w_left + w_right` scaled to track world within tolerance (right-interior ~20 m, icra-2023-short ~20 m, icra-2025 ~17 m)
+- [x] Each map's start line is at its configured pixel and its direction matches the param-file key
+- [x] A brief headless run ticks cleanly on each map (full lap-progress bar arrives in ticket 17)
+- [x] The default track is unchanged until ticket 16 flips it
