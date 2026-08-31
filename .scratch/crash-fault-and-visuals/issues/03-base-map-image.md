@@ -9,11 +9,11 @@ differ, what you see now matches what the car hits.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The map image served to the live view is the base image, not the `-gimp`
+- [x] The map image served to the live view is the base image, not the `-gimp`
       variant.
-- [ ] The static map placement block and the map-image route resolve to that same
+- [x] The static map placement block and the map-image route resolve to that same
       base image, with placement unchanged.
-- [ ] On the default track the visible rendering is unchanged (base and `-gimp`
+- [x] On the default track the visible rendering is unchanged (base and `-gimp`
       are identical there).

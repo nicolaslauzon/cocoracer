@@ -8,11 +8,11 @@ window cut so the trail stays legible on a long track.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Each vehicle's trail renders as one continuous line (a single open path)
+- [x] Each vehicle's trail renders as one continuous line (a single open path)
       in its identity color, with no visible breaks between recorded poses.
-- [ ] The tail still fades into the distance toward the trail window, so the
+- [x] The tail still fades into the distance toward the trail window, so the
       whole trail does not render at uniform opacity.
-- [ ] The trail keeps its color mapping for every status (racing color, dimmed
+- [x] The trail keeps its color mapping for every status (racing color, dimmed
       ghost/paused, white/black finished/DNF).

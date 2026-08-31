@@ -8,11 +8,11 @@ and vehicle-to-vehicle crashes.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Crash X marks render at 2× their current size.
-- [ ] Each X is stroked in the crashing vehicle's identity color (not a fixed
+- [x] Crash X marks render at 2× their current size.
+- [x] Each X is stroked in the crashing vehicle's identity color (not a fixed
       red), staying consistent with the vehicle's color while racing.
-- [ ] A crash X is drawn for a vehicle-to-vehicle crash, not just a wall crash.
-- [ ] Each vehicle shows only its single most-recent crash X; older marks are
+- [x] A crash X is drawn for a vehicle-to-vehicle crash, not just a wall crash.
+- [x] Each vehicle shows only its single most-recent crash X; older marks are
       dropped as new ones arrive.

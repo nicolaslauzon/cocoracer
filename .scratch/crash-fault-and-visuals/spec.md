@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: done
 
 # Spec: Crash fault attribution + live-view trail, crash Xs, and picture-true map
 

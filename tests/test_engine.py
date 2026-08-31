@@ -611,20 +611,20 @@ def test_vehicle_collision_resets_both_to_pause_and_ghost(
     engine = RaceEngine(
         stadium,
         config,
-        [StraightDriver(2.0), StraightDriver(0.0)],
-        ["chaser", "target"],
+        [StraightDriver(2.0), StraightDriver(2.0)],
+        ["left", "right"],
         mode="race",
     )
-    chaser, target = engine.vehicles
-    chaser.x, chaser.y, chaser.yaw = 3.0, 0.0, 0.0
-    target.x, target.y, target.yaw = 5.0, 0.0, 0.0
-    while chaser.state.is_racing and target.state.is_racing:
+    left, right = engine.vehicles
+    left.x, left.y, left.yaw = 3.0, 0.0, 0.0
+    right.x, right.y, right.yaw = 5.0, 0.0, math.pi
+    while left.state.is_racing and right.state.is_racing:
         engine.tick()
-    assert chaser.state.status is VehicleStatus.PAUSED
-    assert target.state.status is VehicleStatus.PAUSED
-    assert chaser.state.crashes == 1
-    assert target.state.crashes == 1
-    for v in (chaser, target):
+    assert left.state.status is VehicleStatus.PAUSED
+    assert right.state.status is VehicleStatus.PAUSED
+    assert left.state.crashes == 1
+    assert right.state.crashes == 1
+    for v in (left, right):
         assert v.speed == 0.0
         assert v.target_speed == 0.0
         assert v.steering == 0.0
@@ -637,7 +637,7 @@ def test_vehicle_collision_resets_both_to_pause_and_ghost(
     observed_pause = pause_ticks - 1  # the timer advances on the first tick
     for _ in range(observed_pause + ghost_ticks):
         engine.tick()
-        statuses.append((chaser.state.status, target.state.status))
+        statuses.append((left.state.status, right.state.status))
     # Both pause, ghost, and re-race in lockstep; ghosts cannot
     # re-collide, so the crash count does not move.
     assert all(
@@ -648,8 +648,8 @@ def test_vehicle_collision_resets_both_to_pause_and_ghost(
         s == (VehicleStatus.GHOST, VehicleStatus.GHOST)
         for s in statuses[observed_pause : observed_pause + ghost_ticks]
     )
-    assert chaser.state.crashes == 1
-    assert target.state.crashes == 1
+    assert left.state.crashes == 1
+    assert right.state.crashes == 1
 
 
 @pytest.mark.slow

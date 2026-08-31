@@ -10,11 +10,11 @@ one-crash-per-tick and pile behavior hold at the engine boundary.
 
 **Blocked by:** 01 (Instigator-only fault attribution).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] On a v2v crash the instigator's pre-reset crash position is recorded and it
+- [x] On a v2v crash the instigator's pre-reset crash position is recorded and it
       takes the pause, then ghost→racing immunity.
-- [ ] The innocent car's crash count, status, and pose are provably unchanged
+- [x] The innocent car's crash count, status, and pose are provably unchanged
       across the crash tick; it keeps racing.
-- [ ] A v2v crash does not push the innocent toward its DNF crash limit.
-- [ ] One crash per tick holds for the instigator even in a multi-vehicle pile.
+- [x] A v2v crash does not push the innocent toward its DNF crash limit.
+- [x] One crash per tick holds for the instigator even in a multi-vehicle pile.

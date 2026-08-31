@@ -11,17 +11,17 @@ one pair is the instigator while an only-victim is penalized by no pair.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `collide()` returns only the vehicles to penalize: wall hits always; a
+- [x] `collide()` returns only the vehicles to penalize: wall hits always; a
       racing pair under the collision distance yields the sole instigator, or
       both on a mutual (head-on / near-stationary) contact.
-- [ ] A rear-end returns only the follower; a side-swipe returns only the
+- [x] A rear-end returns only the follower; a side-swipe returns only the
       crossing car.
-- [ ] A head-on or stationary overlap returns both cars.
-- [ ] A wall hit beats being a pair instigator in the same tick and is returned
+- [x] A head-on or stationary overlap returns both cars.
+- [x] A wall hit beats being a pair instigator in the same tick and is returned
       once.
-- [ ] One crash per tick: a vehicle consumed by the wall pass or an earlier pair
+- [x] One crash per tick: a vehicle consumed by the wall pass or an earlier pair
       drops out of later pairs.
-- [ ] In a pile, each instigator is returned once and an only-victim is returned
+- [x] In a pile, each instigator is returned once and an only-victim is returned
       by no pair (kept racing).

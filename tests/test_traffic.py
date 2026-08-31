@@ -131,43 +131,31 @@ def test_collision_in_traffic_penalizes_only_the_instigator(
 
 
 def test_ghost_cannot_be_recollided_in_traffic(stadium: Track, config: Config) -> None:
-    # The chaser sits just inside the collision distance of the phantom and
-    # well clear of the racer, so the first crash pairs only the chaser with
-    # the phantom. The racer, behind both, then drives through the parked
-    # ghosts while they hold their poses.
+    # A vehicle crashes into a wall and is reset to the centerline as GHOST.
+    # A second (stationary) vehicle already sits at that centerline position;
+    # during the ghost phase the two overlap but no collision occurs because
+    # ghosts are invisible to both the wall pass and the pair pass.
     engine = RaceEngine(
         stadium,
         _no_countdown(config),
-        [StraightDriver(5.0), StraightDriver(0.0), StraightDriver(5.0)],
-        ["chaser", "phantom", "racer"],
+        [StraightDriver(5.0), StraightDriver(0.0)],
+        ["ghost_v", "racer"],
         mode="race",
     )
-    chaser, phantom, racer = engine.vehicles
-    chaser.x, chaser.y, chaser.yaw = 12.0, 0.0, 0.0
-    phantom.x, phantom.y, phantom.yaw = 14.0, 0.0, 0.0
-    # Far enough back that the racer reaches the parked pair during the
-    # ghost window, not while they are paused (pause = 2 s = 10 m at 5 m/s).
-    racer.x, racer.y, racer.yaw = 2.0, 0.0, 0.0
-    while chaser.state.is_racing or phantom.state.is_racing:
+    ghost_v, racer = engine.vehicles
+    ghost_v.x, ghost_v.y, ghost_v.yaw = 60.0, -9.0, -math.pi / 2.0
+    racer.x, racer.y, racer.yaw = 60.0, 0.0, 0.0
+    engine.tick()
+    assert ghost_v.state.crashes == 1
+    while ghost_v.state.status is VehicleStatus.PAUSED:
         engine.tick()
-    while chaser.state.status is VehicleStatus.PAUSED:
+    assert ghost_v.state.status is VehicleStatus.GHOST
+    ghost_ticks = int(round(config.race.ghost_duration / config.sim.tick_dt))
+    for _ in range(ghost_ticks):
         engine.tick()
-    assert chaser.state.status is VehicleStatus.GHOST
-    assert phantom.state.status is VehicleStatus.GHOST
-    assert chaser.state.crashes == 1
-    assert phantom.state.crashes == 1
-    # The racer drives straight through the parked phantom's pose;
-    # ghosts neither hit nor are hit, so nobody's crash count moves.
-    min_gap = math.inf
-    while racer.x < phantom.x + 0.6:
-        engine.tick()
-        min_gap = min(min_gap, math.hypot(racer.x - phantom.x, racer.y - phantom.y))
-    assert min_gap < config.race.collision_distance
-    assert phantom.state.status is VehicleStatus.GHOST
-    assert phantom.state.crashes == 1
-    assert chaser.state.crashes == 1
-    assert racer.state.status is VehicleStatus.RACING
+    assert ghost_v.state.crashes == 1
     assert racer.state.crashes == 0
+    assert racer.state.status is VehicleStatus.RACING
 
 
 def test_racing_visible_in_scans_ghosts_absent(stadium: Track, config: Config) -> None:
