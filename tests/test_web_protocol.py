@@ -109,7 +109,9 @@ def test_static_message_carries_the_map_image_block(tmp_path: Path) -> None:
         "height": 120,
     }
     # The server route serves the display image as a PNG.
-    png = pgm_png_bytes(parse_pgm(map_display_image(config, "m")))
+    served = map_display_image(config, "m")
+    assert served is not None
+    png = pgm_png_bytes(parse_pgm(served))
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
 
 

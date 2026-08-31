@@ -98,15 +98,18 @@ def map_image_block(config: Config, track_name: str) -> dict | None:
     The world frame of a map track is image pixels times the map's scale
     (meters per pixel), origin at the image's bottom-left corner, y up.
     """
+    spec = config.tracks.get(track_name)
+    map_spec = spec.map if spec is not None else None
+    if map_spec is None:
+        return None
     path = map_display_image(config, track_name)
     if path is None:
         return None
     image = parse_pgm(path)
-    scale = config.tracks[track_name].map.scale
     height, width = image.shape
     return {
         "url": "/map-image",
-        "scale": float(scale),
+        "scale": float(map_spec.scale),
         "width": int(width),
         "height": int(height),
     }
