@@ -191,19 +191,48 @@ function prerenderTrack() {
   drawStartLine(t);
 }
 
-// The map's display image: world frame is image pixels times the scale,
-// origin at the image's bottom-left corner, y up.
+// The map's display image: world frame is image pixels times the map's
+// scale, origin at the image's bottom-left corner, y up. The raw PGM is
+// recolored to the track's dark theme so walls stay black, the road is
+// drawn in the old road color, and the surroundings fall to the page
+// background. On screen the image is world-meters times view.scale px/m.
 function drawMapImage(t) {
   const mi = staticMsg.map_image;
   const img = new Image();
   img.onload = () => {
     const [x0, y0] = view.toPx(0, mi.height * mi.scale);
+    const worldW = mi.width * mi.scale;
+    const worldH = mi.height * mi.scale;
     t.imageSmoothingEnabled = false;
-    t.drawImage(img, x0, y0, mi.width * mi.scale, mi.height * mi.scale);
+    t.drawImage(recolorMap(img), x0, y0, worldW * view.scale, worldH * view.scale);
     drawStartLine(t);
     draw();
   };
   img.src = mi.url;
+}
+
+// Grayscale(ish) PGM -> dark theme: bright road pixels -> #252c36,
+// black wall outlines stay black, everything else -> page background #10141a.
+function recolorMap(img) {
+  const c = document.createElement("canvas");
+  c.width = img.width;
+  c.height = img.height;
+  const g = c.getContext("2d");
+  g.drawImage(img, 0, 0);
+  const id = g.getImageData(0, 0, c.width, c.height);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = d[i]; // grayscale: r == g == b
+    if (v >= 224) {
+      d[i] = 0x25; d[i + 1] = 0x2c; d[i + 2] = 0x36; d[i + 3] = 255; // road #252c36
+    } else if (v < 32) {
+      d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 255; // outline #000000
+    } else {
+      d[i] = 0x10; d[i + 1] = 0x14; d[i + 2] = 0x1a; d[i + 3] = 255; // bg #10141a
+    }
+  }
+  g.putImageData(id, 0, 0);
+  return c;
 }
 
 // The pixel-art F1 sprite: the red channel of its body pixels encodes
@@ -255,6 +284,9 @@ function drawCar(v) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-v.yaw);
+  // The sprite's nose points up its local -y; rotate a quarter turn
+  // clockwise so it points along the heading.
+  ctx.rotate(Math.PI / 2);
   ctx.globalAlpha = ALPHAS[v.status] ?? 1;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(spr, -wid / 2, -len / 2, wid, len);

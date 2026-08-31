@@ -106,6 +106,16 @@ def test_index_html_renders_the_map_image(stadium: Track) -> None:
     assert "map_image" in html
     assert "drawMapImage" in html
     assert "map_image" in _static_field_names(stadium, _any_config())
+    # The map is sized in world meters times the pixels-per-metre view
+    # scale, and recolored to the dark theme rather than shown raw.
+    assert "recolorMap" in html
+    assert "worldW * view.scale" in html
+    assert "worldH * view.scale" in html
+
+
+def test_index_html_rotates_the_sprite_to_point_forward() -> None:
+    html = _index_html()
+    assert "rotate(Math.PI / 2)" in html
 
 
 def _any_config() -> Config:
