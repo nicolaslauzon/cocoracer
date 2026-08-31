@@ -29,7 +29,7 @@ dev = [
 
 [project.scripts]
 cocoracer = "cocoracer.cli:main"
-demo = "cocoracer.demo:main"
+cocoracer-demo = "cocoracer.demo:main"
 
 [tool.setuptools.packages.find]
 include = ["cocoracer*"]

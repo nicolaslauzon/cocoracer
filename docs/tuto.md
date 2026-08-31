@@ -79,13 +79,13 @@ The car chases your targets but respects hardware limits: 25 m/s top speed,
 Time trial (alone):
 
 ```bash
-demo time-trial stub.py
+cocoracer-demo time-trial stub.py
 ```
 
 Head-to-head against the wall follower:
 
 ```bash
-demo race stub.py
+cocoracer-demo race stub.py
 ```
 
 Both open a browser at http://127.0.0.1:8000 where you can watch the cars
