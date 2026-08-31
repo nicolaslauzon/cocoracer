@@ -35,7 +35,7 @@ cocoracer-demo = "cocoracer.demo:main"
 include = ["cocoracer*"]
 
 [tool.setuptools.package-data]
-cocoracer = ["web/*.html", "bundled/*.py", "bundled/*.yaml"]
+cocoracer = ["web/*.html", "web/*.png", "bundled/*.py", "bundled/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
