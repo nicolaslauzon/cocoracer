@@ -153,25 +153,58 @@ function prerenderTrack() {
   drawStartLine(t);
 }
 
+// The pixel-art F1 sprite: the red channel of its body pixels encodes
+// brightness (255 = body, 128 = shade), black tires stay black. One
+// recolored offscreen copy per color, built at load from the single
+// editable f1-car.png.
+const SPRITE_URL = "f1-car.png";
+let carSprite = null;
+const spriteCache = {};
+const spriteImage = new Image();
+spriteImage.onload = () => {
+  carSprite = spriteImage;
+  draw();
+};
+spriteImage.src = SPRITE_URL;
+
+function tintedSprite(color) {
+  if (!carSprite) return null;
+  if (spriteCache[color]) return spriteCache[color];
+  const c = document.createElement("canvas");
+  c.width = carSprite.width;
+  c.height = carSprite.height;
+  const t = c.getContext("2d");
+  t.drawImage(carSprite, 0, 0);
+  const img = t.getImageData(0, 0, c.width, c.height);
+  const m = img.data;
+  const rgb = parseInt(color.slice(1), 16);
+  const vr = (rgb >> 16) & 255;
+  const vg = (rgb >> 8) & 255;
+  const vb = rgb & 255;
+  for (let i = 0; i < m.length; i += 4) {
+    if (m[i + 3] === 0 || m[i] + m[i + 1] + m[i + 2] < 90) continue;
+    const k = m[i] / 255;
+    m[i] = vr * k;
+    m[i + 1] = vg * k;
+    m[i + 2] = vb * k;
+  }
+  t.putImageData(img, 0, 0);
+  spriteCache[color] = c;
+  return c;
+}
+
 function drawCar(v) {
+  const spr = tintedSprite(COLORS[v.status] ?? "#ffffff");
+  if (!spr) return;
   const [cx, cy] = view.toPx(v.x, v.y);
   const len = Math.max(8, staticMsg.vehicle.length * view.scale);
   const wid = Math.max(4, staticMsg.vehicle.width * view.scale);
-  const wheel = Math.max(1.5, wid * 0.3);
-  const inset = Math.max(1.5, len * 0.15);
-  const winW = Math.max(2, len * 0.18);
-  const winH = Math.max(2, wid * 0.55);
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-v.yaw);
   ctx.globalAlpha = ALPHAS[v.status] ?? 1;
-  ctx.fillStyle = COLORS[v.status] ?? "#ffffff";
-  ctx.fillRect(-len / 2, -wid / 2, len, wid);
-  ctx.fillStyle = "#000000";
-  ctx.fillRect(len / 2 - inset - wheel / 2, -wid / 2 - wheel / 2, wheel, wid + wheel);
-  ctx.fillRect(-len / 2 + inset - wheel / 2, -wid / 2 - wheel / 2, wheel, wid + wheel);
-  ctx.fillStyle = "#8a94a3";
-  ctx.fillRect(len / 2 - inset - winW, -winH / 2, winW, winH);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(spr, -wid / 2, -len / 2, wid, len);
   ctx.restore();
 }
 

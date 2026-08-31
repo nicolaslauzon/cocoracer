@@ -22,6 +22,7 @@ from cocoracer.engine import RaceEngine
 from cocoracer.web.protocol import build_dynamic_message, build_static_message
 
 INDEX_PATH = Path(__file__).with_name("index.html")
+SPRITE_PATH = Path(__file__).with_name("f1-car.png")
 _DYNAMIC_INTERVAL = 0.15
 _START_TIMEOUT = 10.0
 
@@ -43,6 +44,10 @@ def create_app(engine: RaceEngine, start_queue: queue.Queue[None]) -> FastAPI:
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(INDEX_PATH)
+
+    @app.get("/f1-car.png")
+    def sprite() -> FileResponse:
+        return FileResponse(SPRITE_PATH)
 
     @app.websocket("/ws")
     async def stream(websocket: WebSocket) -> None:

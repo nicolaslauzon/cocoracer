@@ -91,9 +91,14 @@ def test_index_html_covers_dynamic_protocol_fields(stadium: Track) -> None:
     assert not missing
 
 
-def test_index_html_draws_car_bodies_as_rectangles() -> None:
+def test_index_html_draws_the_pixel_art_sprite() -> None:
+    sprite = Path(__file__).resolve().parent.parent / "cocoracer" / "web" / "f1-car.png"
+    assert sprite.is_file()
+    assert sprite.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     html = _index_html()
-    assert "fillRect" in html
+    assert "f1-car.png" in html
+    assert "drawImage" in html
+    assert "fillRect" not in html.split("function drawCar")[1].split("}")[0]
 
 
 def test_index_html_has_start_button() -> None:
